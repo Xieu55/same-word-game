@@ -66,21 +66,59 @@
         button:hover { background-color: var(--hover-pink); transform: translateY(-2px); }
         button:disabled { background-color: #ccc; cursor: not-allowed; transform: none; }
         .room-code {
-            font-size: 36px;
+            font-size: 32px;
             font-weight: bold;
             color: var(--primary-pink);
-            letter-spacing: 6px;
+            letter-spacing: 4px;
             text-align: center;
-            margin: 20px 0;
-            padding: 16px;
+            margin: 15px 0;
+            padding: 12px;
             background: var(--cream);
             border-radius: var(--radius);
             border: 2px dashed var(--accent-lilac);
         }
-        .status-text { text-align: center; font-weight: bold; margin-top: 16px; color: #555;}
-        .result-box { text-align: center; padding: 20px; border-radius: var(--radius); margin-top: 20px; }
-        .result-win { background-color: #E8F5E9; color: #2E7D32; }
-        .result-lose { background-color: #FFEBEE; color: #C62828; }
+        .status-text { text-align: center; font-weight: bold; margin-top: 10px; color: #555;}
+        
+        /* 历史记录列表样式 */
+        .history-container {
+            margin-top: 20px;
+            border-top: 1px dashed #eee;
+            padding-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .history-title {
+            font-size: 14px;
+            color: #999;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .history-item {
+            background-color: var(--cream);
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .history-item.win-round {
+            background-color: #E8F5E9;
+            border: 1px solid #C8E6C9;
+        }
+        .word-tag { background: white; padding: 2px 8px; border-radius: 5px; border: 1px solid #eee; }
+        
+        .win-banner {
+            text-align: center;
+            background: #E8F5E9;
+            color: #2E7D32;
+            padding: 15px;
+            border-radius: var(--radius);
+            font-weight: bold;
+            font-size: 18px;
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
@@ -89,7 +127,7 @@
         <!-- 首页 -->
         <div id="view-home">
             <h2>同词相遇 🌸</h2>
-            <p>默契大考验，看看你们能不能想到同一个词</p>
+            <p>默契大考验，直到你们想出同一个词</p>
             <input type="text" id="nickname" placeholder="输入你的昵称" maxlength="10">
             <button onclick="createGame()">创建新房间</button>
             <button onclick="showJoinView()" style="background-color: var(--accent-lilac); color: #555;">加入房间</button>
@@ -101,30 +139,30 @@
             <input type="text" id="join-code" placeholder="输入4位房间号" maxlength="4" style="text-align: center; font-size: 24px; letter-spacing: 4px;">
             <button onclick="joinGame()">确认加入</button>
             <button onclick="goHome()" style="background-color: transparent; color: #888; box-shadow: none; border: 1px solid #ddd;">返回</button>
-            <div id="join-error" class="error-msg hidden"></div>
+            <div id="join-error" style="color: red; text-align: center; font-size: 14px; margin-top: 10px;" class="hidden"></div>
         </div>
 
         <!-- 房间内 -->
         <div id="view-room" class="hidden">
             <h2>房间中</h2>
             <div class="room-code" id="display-room-code">0000</div>
-            <p style="margin-bottom: 10px;">把房间号发给朋友吧</p>
             <div id="room-status" class="status-text">等待对方加入...</div>
             
+            <!-- 胜利横幅 -->
+            <div id="win-banner" class="win-banner hidden">
+                🎉 恭喜！你们的心有灵犀！
+            </div>
+
             <!-- 词语提交区 -->
-            <div id="game-play-area" class="hidden" style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;">
-                <p>输入你想到的词：</p>
-                <input type="text" id="word-input" placeholder="输入词语..." maxlength="20">
+            <div id="game-play-area" class="hidden" style="margin-top: 20px;">
+                <input type="text" id="word-input" placeholder="输入你想到的词..." maxlength="20" style="text-align: center;">
                 <button onclick="submitWord()">提交</button>
             </div>
 
-            <!-- 结果展示区 -->
-            <div id="result-area" class="hidden">
-                <div id="result-box" class="result-box">
-                    <h3 id="result-title" style="margin: 0;"></h3>
-                    <p id="result-words" style="margin: 10px 0;"></p>
-                </div>
-                <button onclick="nextRound()" style="margin-top: 15px;">再来一局</button>
+            <!-- 历史记录展示区 -->
+            <div id="history-area" class="history-container hidden">
+                <div class="history-title">—— 过往回合记录 ——</div>
+                <div id="history-list"></div>
             </div>
             
             <button onclick="goHome()" style="background-color: transparent; color: #888; box-shadow: none; border: 1px solid #ddd; margin-top: 20px;">退出房间</button>
@@ -140,6 +178,9 @@
         let currentUser = null;
         let currentRoomCode = null;
         let pollInterval = null;
+        let playerAName = "";
+        let playerBName = "";
+        let myName = "";
 
         function showView(viewId) {
             document.querySelectorAll('.card > div').forEach(el => el.classList.add('hidden'));
@@ -159,10 +200,8 @@
 
         function checkNickname() {
             const name = document.getElementById('nickname').value.trim();
-            if(!name) {
-                alert('请先输入昵称哦~');
-                return false;
-            }
+            if(!name) { alert('请先输入昵称哦~'); return false; }
+            myName = name;
             return true;
         }
 
@@ -179,12 +218,10 @@
 
         async function createGame() {
             if(!checkNickname()) return;
-            const name = document.getElementById('nickname').value.trim();
             try {
                 await ensureAuth();
-                const { data, error } = await supabaseClient.rpc('create_game', { p_name: name });
+                const { data, error } = await supabaseClient.rpc('create_game', { p_name: myName });
                 if (error) throw error;
-                if (data.error) throw new Error(data.error);
                 currentRoomCode = data.room_code;
                 enterRoomView(currentRoomCode);
             } catch (err) { alert(err.message); }
@@ -192,7 +229,6 @@
 
         async function joinGame() {
             if(!checkNickname()) return;
-            const name = document.getElementById('nickname').value.trim();
             const code = document.getElementById('join-code').value.trim();
             const errorEl = document.getElementById('join-error');
             if(!code || code.length !== 4) {
@@ -202,7 +238,7 @@
             }
             try {
                 await ensureAuth();
-                const { data, error } = await supabaseClient.rpc('join_game', { p_code: code, p_name: name });
+                const { data, error } = await supabaseClient.rpc('join_game', { p_code: code, p_name: myName });
                 if (error) throw error;
                 if (data.error) throw new Error(data.error);
                 currentRoomCode = code;
@@ -226,47 +262,65 @@
             try {
                 const { data, error } = await supabaseClient.rpc('get_game_state', { p_code: currentRoomCode });
                 if (error) throw error;
-                if (data.error) throw new Error(data.error);
 
                 const statusEl = document.getElementById('room-status');
                 const playArea = document.getElementById('game-play-area');
-                const resultArea = document.getElementById('result-area');
+                const historyArea = document.getElementById('history-area');
+                const winBanner = document.getElementById('win-banner');
+
+                playerAName = data.player_a_name || "玩家A";
+                playerBName = data.player_b_name || "玩家B";
 
                 if (data.status === 'waiting') {
                     statusEl.innerText = "等待对方加入...";
                     playArea.classList.add('hidden');
-                    resultArea.classList.add('hidden');
+                    historyArea.classList.add('hidden');
                 } else if (data.status === 'playing') {
-                    if (data.result === 'win') {
-                        // 赢了
-                        statusEl.innerText = "默契成功！";
+                    // 判断我是不是 A
+                    const isMeA = (myName === data.player_a_name);
+                    const myOpponentName = isMeA ? playerBName : playerAName;
+
+                    if (data.is_win) {
+                        // 最终胜利
+                        statusEl.innerText = "游戏结束";
                         playArea.classList.add('hidden');
-                        resultArea.classList.remove('hidden');
-                        const resultBox = document.getElementById('result-box');
-                        resultBox.className = 'result-box result-win';
-                        document.getElementById('result-title').innerText = "🎉 同词相遇！";
-                        document.getElementById('result-words').innerText = `你们都想的是：“${data.player_a_word}”`;
-                    } else if (data.result === 'lose') {
-                        // 输了
-                        statusEl.innerText = "默契失败...";
-                        playArea.classList.add('hidden');
-                        resultArea.classList.remove('hidden');
-                        const resultBox = document.getElementById('result-box');
-                        resultBox.className = 'result-box result-lose';
-                        document.getElementById('result-title').innerText = "💔 擦肩而过";
-                        document.getElementById('result-words').innerText = `她想了：“${data.player_a_word}”\n你想了：“${data.player_b_word}”`;
+                        winBanner.classList.remove('hidden');
                     } else {
-                        // 进行中
-                        playArea.classList.remove('hidden');
-                        resultArea.classList.add('hidden');
-                        statusEl.innerText = `游戏进行中 (第 ${data.current_round} 回合)`;
-                        if(data.has_a_submitted && data.has_b_submitted) {
-                            statusEl.innerText = "双方都已提交！等待结果...";
-                        } else if (data.has_a_submitted || data.has_b_submitted) {
-                            statusEl.innerText = "有一方已提交，等待另一方...";
+                        winBanner.classList.add('hidden');
+                        
+                        // 检查我是不是已经提交了
+                        const iSubmitted = isMeA ? data.has_a_submitted : data.has_b_submitted;
+                        if (iSubmitted) {
+                            statusEl.innerText = "已提交，等待对方...";
+                            playArea.classList.add('hidden');
                         } else {
-                            statusEl.innerText = "请双方输入词语";
+                            statusEl.innerText = `第 ${data.current_round} 回合，请出题`;
+                            playArea.classList.remove('hidden');
                         }
+                    }
+
+                    // 渲染历史记录
+                    if (data.history && data.history.length > 0) {
+                        historyArea.classList.remove('hidden');
+                        const listEl = document.getElementById('history-list');
+                        listEl.innerHTML = '';
+                        
+                        data.history.forEach(item => {
+                            const isWinRound = (item.player_a_word === item.player_b_word);
+                            const div = document.createElement('div');
+                            div.className = `history-item ${isWinRound ? 'win-round' : ''}`;
+                            
+                            // 根据我是谁，把对方的名字放在前面（或者标明）
+                            div.innerHTML = `
+                                <span style="color:#888;">第${item.round_number}局</span>
+                                <div>
+                                    <span class="word-tag">${isMeA ? item.player_a_word : item.player_b_word}</span> 
+                                    <span style="color:#ccc; margin: 0 5px;">VS</span> 
+                                    <span class="word-tag">${isMeA ? item.player_b_word : item.player_a_word}</span>
+                                </div>
+                            `;
+                            listEl.appendChild(div);
+                        });
                     }
                 }
             } catch (err) { console.error("轮询出错", err); }
@@ -280,18 +334,8 @@
                 if (error) throw error;
                 if (data.error) throw new Error(data.error);
                 document.getElementById('word-input').value = '';
-                alert("提交成功！等待对方...");
+                checkRoomState(); // 提交后立刻更新状态
             } catch (err) { alert("提交失败: " + err.message); }
-        }
-
-        async function nextRound() {
-            try {
-                const { data, error } = await supabaseClient.rpc('advance_game_round', { p_code: currentRoomCode });
-                if (error) throw error;
-                document.getElementById('word-input').value = '';
-                // 立刻刷新状态
-                checkRoomState();
-            } catch (err) { alert("推进回合失败: " + err.message); }
         }
     </script>
 </body>
