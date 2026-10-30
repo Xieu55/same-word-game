@@ -7,20 +7,20 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
-            --bg-color: #FAFAFC;        /* 极浅灰粉背景 */
-            --card-bg: #FFFFFF;         
-            --primary: #F7A8B8;         
-            --primary-hover: #F490A3;   
-            --text-main: #4A4A4A;       
-            --text-muted: #A0A0A0;      
-            --accent-lilac: #E2D4F0;    
-            --cream: #FFFDF9;           
-            --radius: 24px;            
+            --bg-color: #FFF9FA;        /* 极淡的奶油粉背景 */
+            --text-main: #5C5C5C;       /* 柔和深灰，不刺眼 */
+            --text-muted: #A8A8A8;
+            --primary-pink: #F7A8B8;    /* 主粉色 */
+            --soft-pink: #FCEEF0;       /* 淡粉卡片 */
+            --soft-lilac: #F3EEFA;      /* 淡紫卡片 */
+            --cream: #FFFFFF;           /* 纯白输入框 */
+            --radius: 20px;
         }
+        
         body {
             background-color: var(--bg-color);
             color: var(--text-main);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", Roboto, sans-serif;
             margin: 0;
             display: flex;
             justify-content: center;
@@ -28,146 +28,191 @@
             min-height: 100vh;
             padding: 20px;
         }
+
         .card {
-            background-color: var(--card-bg);
-            border-radius: var(--radius);
-            padding: 30px 24px;
-            box-shadow: 0 8px 32px rgba(247, 168, 184, 0.1); 
+            background-color: transparent;
             width: 100%;
-            max-width: 400px;
+            max-width: 360px;
             box-sizing: border-box;
-            position: relative; /* 为房间号定位 */
         }
+
         .hidden { display: none !important; }
-        
-        .top-tag { text-align: center; font-size: 12px; color: var(--primary); font-weight: bold; letter-spacing: 1px; margin-bottom: 8px;}
-        h2 { text-align: center; color: var(--text-main); margin: 0 0 16px 0; font-size: 24px;}
-        p { text-align: center; font-size: 14px; color: var(--text-muted); margin-bottom: 24px; }
-        
+
+        /* 顶部房间号极简设计 */
+        .room-header {
+            text-align: center;
+            font-size: 11px;
+            color: #C0C0C0;
+            letter-spacing: 1px;
+            margin-bottom: 24px;
+        }
+        .room-header b { color: #999; font-weight: normal; margin-left: 4px;}
+
+        h2 { 
+            text-align: center; 
+            font-size: 22px; 
+            font-weight: 500;
+            color: var(--text-main); 
+            margin: 0 0 8px 0; 
+        }
+        p { 
+            text-align: center; 
+            font-size: 13px; 
+            color: var(--text-muted); 
+            margin-bottom: 32px; 
+        }
+
         input {
             width: 100%;
             padding: 16px;
-            border-radius: 16px;
-            border: 1px solid var(--accent-lilac);
+            border-radius: var(--radius);
+            border: 1.5px solid transparent;
             background-color: var(--cream);
-            font-size: 16px;
+            font-size: 15px;
             box-sizing: border-box;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
             outline: none;
             text-align: center;
+            color: var(--text-main);
+            box-shadow: 0 4px 16px rgba(247, 168, 184, 0.08);
             transition: all 0.3s;
         }
-        input:focus { border-color: var(--primary); background-color: #FFF; }
-        
+        input:focus { border-color: var(--primary-pink); }
+        input::placeholder { color: #D0D0D0; }
+
         button {
-            background-color: var(--primary);
+            background-color: var(--primary-pink);
             color: white;
             border: none;
-            border-radius: 999px;
+            border-radius: var(--radius);
             padding: 16px;
-            font-size: 16px;
-            font-weight: 600;
+            font-size: 15px;
+            font-weight: 500;
             width: 100%;
             cursor: pointer;
             transition: all 0.2s ease;
             margin-bottom: 12px;
-            box-shadow: 0 4px 12px rgba(247, 168, 184, 0.3);
+            box-shadow: 0 6px 20px rgba(247, 168, 184, 0.25);
         }
-        button:hover { background-color: var(--primary-hover); transform: translateY(-2px); }
+        button:hover { background-color: #F490A3; transform: translateY(-1px); }
+        button:active { transform: translateY(1px); box-shadow: 0 2px 10px rgba(247, 168, 184, 0.2); }
         
-        /* 房间号改成极简小角标 */
-        .room-tag {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            font-size: 11px;
-            color: #BBB;
-            background: #F9F9F9;
-            padding: 4px 10px;
-            border-radius: 12px;
-            border: 1px solid #F0F0F0;
+        .btn-secondary {
+            background-color: transparent;
+            color: #B0B0B0;
+            box-shadow: none;
+            font-size: 13px;
         }
-        
-        .status-text { text-align: center; font-size: 15px; color: #666; margin-bottom: 20px;}
-        
-        .history-container {
-            margin-top: 15px; border-top: 1px dashed #EEE; padding-top: 15px; max-height: 250px; overflow-y: auto;
-        }
-        .history-item { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-        .history-label { font-size: 12px; color: #BBB; width: 45px; flex-shrink: 0; }
-        
-        .word-box { flex: 1; padding: 12px 10px; border-radius: 14px; text-align: center; font-weight: bold; font-size: 15px; color: var(--text-main); }
-        .word-a { background-color: #FFF0F5; color: #D87A94; } /* 淡粉色 */
-        .word-b { background-color: #F5F0FA; color: #8E7AA8; } /* 淡紫色 */
-        .vs-mark { font-size: 12px; color: #DDD; margin: 0 10px; flex-shrink: 0;}
-        
-        .history-item.win-round .word-box { background-color: #E8F5E9; color: #2E7D32; }
+        .btn-secondary:hover { background-color: transparent; color: #888; transform: none; }
 
-        /* 结算海报 */
-        .poster { text-align: center; padding: 10px 0; }
-        .poster-title { font-size: 26px; font-weight: bold; color: var(--primary); margin: 10px 0; }
-        .poster-subtitle { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
-        .poster-divider { border-top: 1px dashed #EAEAEA; margin: 20px 0; }
-        .poster-stats { font-size: 14px; color: #666; margin-bottom: 20px; background: var(--cream); padding: 15px; border-radius: 16px; border: 1px dashed var(--accent-lilac);}
-        .poster-stats b { color: var(--primary); font-size: 20px; margin: 0 4px; }
+        .status-text { 
+            text-align: center; 
+            font-size: 14px; 
+            color: var(--text-muted); 
+            margin-bottom: 24px;
+            min-height: 20px;
+        }
+
+        /* 极简聊天记录流 */
+        .history-container {
+            margin-top: 10px; 
+            max-height: 280px; 
+            overflow-y: auto;
+            padding-bottom: 10px;
+        }
+        .history-item { 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            margin-bottom: 16px; 
+            animation: fadeIn 0.4s ease-out;
+        }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .word-bubble { 
+            padding: 12px 20px; 
+            border-radius: 16px; 
+            text-align: center; 
+            font-weight: 500; 
+            font-size: 15px; 
+            color: var(--text-main);
+            max-width: 40%;
+            word-break: break-all;
+        }
+        .word-a { background-color: var(--soft-pink); color: #D87A94; border-bottom-right-radius: 4px; }
+        .word-b { background-color: var(--soft-lilac); color: #8E7AA8; border-bottom-left-radius: 4px; }
+        
+        .vs-mark { font-size: 12px; color: #E0E0E0; margin: 0 12px; }
+
+        /* 大结局排版 */
+        .poster { text-align: center; }
+        .poster-title { font-size: 24px; color: var(--primary-pink); margin-bottom: 8px;}
+        .poster-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 30px;}
+        .final-word-box {
+            background: var(--cream);
+            padding: 24px;
+            border-radius: var(--radius);
+            box-shadow: 0 8px 32px rgba(247, 168, 184, 0.15);
+            margin-bottom: 30px;
+        }
+        .final-word-box span { display: block; font-size: 12px; color: #999; margin-bottom: 8px;}
+        .final-word-box b { font-size: 28px; color: var(--primary-pink); letter-spacing: 2px;}
     </style>
 </head>
 <body>
 
     <div class="card" id="app">
+        <!-- 首页 -->
         <div id="view-home">
-            <div class="top-tag">SAME WORD · 同词相遇</div>
-            <h2>你们的脑回路相遇了</h2>
-            <p>直到你们想出同一个词</p>
+            <h2>同词相遇</h2>
+            <p>看看你们的脑回路是否一致</p>
             <input type="text" id="nickname" placeholder="输入你的昵称" maxlength="10">
             <button onclick="createGame()">创建新房间</button>
-            <button onclick="showJoinView()" style="background-color: var(--accent-lilac); color: #666; box-shadow: none;">加入房间</button>
+            <button onclick="showJoinView()" class="btn-secondary">加入房间</button>
         </div>
 
+        <!-- 加入房间 -->
         <div id="view-join" class="hidden">
             <h2>加入房间</h2>
             <input type="text" id="join-code" placeholder="输入4位房间号" maxlength="4" style="font-size: 24px; letter-spacing: 4px;">
             <button onclick="joinGame()">确认加入</button>
-            <button onclick="goHome()" style="background-color: transparent; color: #888; box-shadow: none;">返回</button>
-            <div id="join-error" style="color: red; text-align: center; font-size: 14px; margin-top: 10px;" class="hidden"></div>
+            <button onclick="goHome()" class="btn-secondary">返回</button>
+            <div id="join-error" style="color: #E57373; text-align: center; font-size: 13px; margin-top: 10px;" class="hidden"></div>
         </div>
 
+        <!-- 房间内 -->
         <div id="view-room" class="hidden">
-            <!-- 极简房间号角标 -->
-            <div class="room-tag">房间号: <b id="display-room-code">0000</b></div>
+            <div class="room-header">ROOM <b id="display-room-code">0000</b></div>
             
-            <h2 style="margin-top: 10px;">房间中</h2>
             <div id="room-status" class="status-text">等待对方加入...</div>
             
             <div id="game-play-area" class="hidden">
-                <input type="text" id="word-input" placeholder="输入你想到的词..." maxlength="20">
-                <button onclick="submitWord()">提交词语</button>
+                <input type="text" id="word-input" placeholder="想到什么词？" maxlength="20">
+                <button onclick="submitWord()">提交</button>
             </div>
 
-            <!-- 记录展示区 -->
             <div id="history-area" class="hidden">
                 <div class="history-container" id="history-list"></div>
             </div>
             
-            <button onclick="goHome()" style="background-color: transparent; color: #CCC; box-shadow: none; margin-top: 15px; font-size: 14px;">退出房间</button>
+            <button onclick="goHome()" class="btn-secondary" style="margin-top: 20px;">退出房间</button>
         </div>
 
+        <!-- 结局展示 -->
         <div id="view-poster" class="hidden">
             <div class="poster">
-                <div class="top-tag">SAME WORD · 同词相遇</div>
-                <h2 class="poster-title">你们的脑回路相遇了</h2>
-                <div class="poster-subtitle">房间 <span id="poster-room-code">-</span> · 共 <span id="poster-rounds">0</span> 轮</div>
+                <h2 class="poster-title">你们想到了一起！</h2>
+                <div class="poster-sub">共经过 <span id="poster-rounds">0</span> 轮默契考验</div>
                 
-                <div class="poster-stats">
-                    最终默契词语：<b id="poster-final-word">-</b>
+                <div class="final-word-box">
+                    <span>最终相同词语</span>
+                    <b id="poster-final-word">-</b>
                 </div>
 
-                <div class="history-container" id="poster-history-list" style="max-height: 300px;"></div>
+                <div class="history-container" id="poster-history-list" style="max-height: 220px; text-align: left; margin-bottom: 20px;"></div>
                 
-                <div class="poster-divider"></div>
-                <p style="font-size: 12px; margin: 0;">表达可以不同，只要想到的是同一个东西。</p>
-                
-                <button onclick="goHome()" style="margin-top: 20px;">再玩一次</button>
+                <button onclick="goHome()" style="margin-top: 10px;">再玩一次</button>
             </div>
         </div>
     </div>
@@ -202,7 +247,7 @@
 
         function checkNickname() {
             const name = document.getElementById('nickname').value.trim();
-            if(!name) { alert('请先输入昵称哦~'); return false; }
+            if(!name) { alert('请先输入昵称哦'); return false; }
             myName = name;
             return true;
         }
@@ -211,7 +256,7 @@
             const { data: { session } } = await supabaseClient.auth.getSession();
             if (!session) {
                 const { data, error } = await supabaseClient.auth.signInAnonymously();
-                if (error) throw new Error("匿名登录失败: " + error.message);
+                if (error) throw new Error("登录失败: " + error.message);
                 currentUser = data.user;
             } else {
                 currentUser = session.user;
@@ -282,7 +327,6 @@
                     historyArea.classList.add('hidden');
                 } else if (data.status === 'playing') {
                     
-                    // 🟢 绝对强制显示历史记录
                     if (data.history && data.history.length > 0) {
                         historyArea.classList.remove('hidden');
                         renderHistory(data.history);
@@ -292,17 +336,18 @@
 
                     const isMeA = (myName === data.player_a_name);
 
+                    // 判断是否被清空（意味着新一轮），或者谁还没提交
                     if (data.player_a_word === null && data.player_b_word === null) {
-                        statusEl.innerText = `第 ${data.current_round} 回合，请出题`;
+                        statusEl.innerText = `第 ${data.current_round} 轮`;
                         playArea.classList.remove('hidden');
-                        document.getElementById('word-input').value = ''; 
+                        // 如果输入框有词，说明是刚清空的，就不动它
                     } else {
                         const iSubmitted = isMeA ? data.has_a_submitted : data.has_b_submitted;
                         if (iSubmitted) {
                             statusEl.innerText = "已提交，等待对方...";
                             playArea.classList.add('hidden');
                         } else {
-                            statusEl.innerText = `第 ${data.current_round} 回合，请出题`;
+                            statusEl.innerText = `第 ${data.current_round} 轮`;
                             playArea.classList.remove('hidden');
                         }
                     }
@@ -316,19 +361,22 @@
             history.forEach(item => {
                 const isWin = (item.player_a_word === item.player_b_word && item.player_a_word !== null);
                 const div = document.createElement('div');
-                div.className = `history-item ${isWin ? 'win-round' : ''}`;
+                div.className = `history-item`;
+                
+                // 赢了的加个边框特效，输了的就普通展示
+                const styleA = isWin ? 'border: 1px solid #E8F5E9;' : '';
+                const styleB = isWin ? 'border: 1px solid #E8F5E9;' : '';
+
                 div.innerHTML = `
-                    <div class="history-label">第${item.round_number}轮</div>
-                    <div class="word-box word-a">${item.player_a_word || '...'}</div>
+                    <div class="word-bubble word-a" style="${styleA}">${item.player_a_word || '...'}</div>
                     <div class="vs-mark">×</div>
-                    <div class="word-box word-b">${item.player_b_word || '...'}</div>
+                    <div class="word-bubble word-b" style="${styleB}">${item.player_b_word || '...'}</div>
                 `;
                 listEl.appendChild(div);
             });
         }
 
         function renderPoster(data) {
-            document.getElementById('poster-room-code').innerText = data.room_code;
             document.getElementById('poster-rounds').innerText = data.history.length;
             document.getElementById('poster-final-word').innerText = data.player_a_word;
 
@@ -337,14 +385,12 @@
             const sortedHistory = [...data.history].sort((a, b) => a.round_number - b.round_number);
             
             sortedHistory.forEach(item => {
-                const isWin = (item.player_a_word === item.player_b_word && item.player_a_word !== null);
                 const div = document.createElement('div');
-                div.className = `history-item ${isWin ? 'win-round' : ''}`;
+                div.className = `history-item`;
                 div.innerHTML = `
-                    <div class="history-label">第${item.round_number}轮</div>
-                    <div class="word-box word-a">${item.player_a_word || '...'}</div>
+                    <div class="word-bubble word-a" style="padding: 8px 12px; font-size: 14px;">${item.player_a_word || '...'}</div>
                     <div class="vs-mark">×</div>
-                    <div class="word-box word-b">${item.player_b_word || '...'}</div>
+                    <div class="word-bubble word-b" style="padding: 8px 12px; font-size: 14px;">${item.player_b_word || '...'}</div>
                 `;
                 listEl.appendChild(div);
             });
