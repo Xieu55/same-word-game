@@ -68,7 +68,7 @@
         .word-a { background-color: var(--soft-pink); color: #D87A94; border-bottom-right-radius: 6px; }
         .word-b { background-color: var(--soft-lilac); color: #8E7AA8; border-bottom-left-radius: 6px; }
         
-        .vs-mark { font-size: 13px; color: #E0E0E0; margin: 0 12px; }
+        .vs-mark { font-size: 14px; color: #D0D0D0; margin: 0 12px; }
 
         .poster { text-align: center; }
         .poster-title { font-size: 24px; color: var(--primary-pink); margin-bottom: 8px;}
@@ -87,7 +87,7 @@
     <div class="card" id="app">
         <!-- 首页 -->
         <div id="view-home">
-            <h2>同词相遇 🌸</h2>
+            <h2>同词相遇</h2>
             <p>看看你们的脑回路是否一致</p>
             <input type="text" id="nickname" placeholder="输入你的昵称" maxlength="10">
             <button onclick="createGame()">创建新房间</button>
@@ -124,7 +124,7 @@
         <!-- 结局展示 -->
         <div id="view-poster" class="hidden">
             <div class="poster">
-                <h2 class="poster-title">🎉 同词相遇！</h2>
+                <h2 class="poster-title">天呐！你们想到了一起！</h2>
                 <div class="poster-sub">共经过 <span id="poster-rounds">0</span> 轮默契考验</div>
                 
                 <div class="final-word-box">
@@ -134,7 +134,8 @@
 
                 <div class="history-container" id="poster-history-list" style="max-height: 220px; text-align: left; margin-bottom: 20px;"></div>
                 
-                <button onclick="goHome()" style="margin-top: 10px;">再玩一次</button>
+                <button onclick="restartGame()" style="margin-top: 10px;">再玩一次（房间不变）</button>
+                <button onclick="goHome()" class="btn-secondary" style="margin-top: 5px;">退回首页</button>
             </div>
         </div>
     </div>
@@ -279,17 +280,13 @@
             const listEl = document.getElementById('history-list');
             listEl.innerHTML = '';
             history.forEach(item => {
-                const isWin = (item.player_a_word === item.player_b_word && item.player_a_word !== null);
                 const div = document.createElement('div');
                 div.className = `history-item`;
                 
-                const styleA = isWin ? 'border: 1px solid #E8F5E9;' : '';
-                const styleB = isWin ? 'border: 1px solid #E8F5E9;' : '';
-
                 div.innerHTML = `
-                    <div class="word-bubble word-a" style="${styleA}">${item.player_a_word || '...'}</div>
+                    <div class="word-bubble word-a">${item.player_a_word || '...'}</div>
                     <div class="vs-mark">×</div>
-                    <div class="word-bubble word-b" style="${styleB}">${item.player_b_word || '...'}</div>
+                    <div class="word-bubble word-b">${item.player_b_word || '...'}</div>
                 `;
                 listEl.appendChild(div);
             });
@@ -315,6 +312,21 @@
             });
         }
 
+        async function restartGame() {
+            try {
+                const { data, error } = await supabaseClient.rpc('restart_game', { p_code: currentRoomCode });
+                if (error) throw error;
+                if (data.error) throw new Error(data.error);
+                
+                showView('view-room');
+                checkRoomState();
+                if(pollInterval) clearInterval(pollInterval);
+                pollInterval = setInterval(checkRoomState, 1500);
+            } catch (err) {
+                alert("重开失败: " + err.message);
+            }
+        }
+
         async function submitWord() {
             const wordInput = document.getElementById('word-input');
             const word = wordInput.value.trim();
@@ -325,9 +337,7 @@
                 if (error) throw error;
                 if (data.error) throw new Error(data.error);
                 
-                // 加回了这句最关键的：提交成功后，立刻把输入框清空！
                 wordInput.value = '';
-                
                 checkRoomState(); 
             } catch (err) { alert("提交失败: " + err.message); }
         }
