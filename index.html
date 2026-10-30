@@ -8,27 +8,25 @@
     <style>
         :root {
             --bg-color: #FFF9FA;        /* 极淡的奶油粉背景 */
-            --text-main: #4A4A4A;       /* 柔和深灰 */
+            --text-main: #5C5C5C;       /* 柔和深灰，不刺眼 */
             --text-muted: #A8A8A8;
-            --primary-pink: #F7A8B8;    
-            --soft-pink: #FCEEF0;       
-            --soft-lilac: #F3EEFA;      
-            --cream: #FFFFFF;           
+            --primary-pink: #F7A8B8;    /* 主粉色 */
+            --soft-pink: #FCEEF0;       /* 淡粉卡片 */
+            --soft-lilac: #F3EEFA;      /* 淡紫卡片 */
+            --cream: #FFFFFF;           /* 纯白输入框 */
             --radius: 20px;
         }
         
         body {
             background-color: var(--bg-color);
             color: var(--text-main);
-            /* 回归苹果原生最优雅的苹方字体 */
-            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", Roboto, sans-serif;
             margin: 0;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
             padding: 20px;
-            -webkit-font-smoothing: antialiased; 
         }
 
         .card {
@@ -40,30 +38,28 @@
 
         .hidden { display: none !important; }
 
+        /* 顶部房间号极简设计 */
         .room-header {
             text-align: center;
             font-size: 11px;
             color: #C0C0C0;
-            letter-spacing: 1.5px;
+            letter-spacing: 1px;
             margin-bottom: 24px;
-            font-weight: 500; 
         }
-        .room-header b { color: #999; margin-left: 4px; font-weight: 600;}
+        .room-header b { color: #999; font-weight: normal; margin-left: 4px;}
 
         h2 { 
             text-align: center; 
             font-size: 22px; 
-            font-weight: 600; /* 标题稍微加粗 */
+            font-weight: 500;
             color: var(--text-main); 
             margin: 0 0 8px 0; 
-            letter-spacing: 1px;
         }
         p { 
             text-align: center; 
             font-size: 13px; 
             color: var(--text-muted); 
             margin-bottom: 32px; 
-            font-weight: 400;
         }
 
         input {
@@ -73,7 +69,6 @@
             border: 1.5px solid transparent;
             background-color: var(--cream);
             font-size: 15px;
-            font-family: inherit;
             box-sizing: border-box;
             margin-bottom: 12px;
             outline: none;
@@ -83,7 +78,7 @@
             transition: all 0.3s;
         }
         input:focus { border-color: var(--primary-pink); }
-        input::placeholder { color: #D0D0D0; font-weight: 400;}
+        input::placeholder { color: #D0D0D0; }
 
         button {
             background-color: var(--primary-pink);
@@ -91,10 +86,8 @@
             border: none;
             border-radius: var(--radius);
             padding: 16px;
-            font-size: 16px;
-            font-family: inherit;
-            font-weight: 500; 
-            letter-spacing: 1px;
+            font-size: 15px;
+            font-weight: 500;
             width: 100%;
             cursor: pointer;
             transition: all 0.2s ease;
@@ -108,7 +101,7 @@
             background-color: transparent;
             color: #B0B0B0;
             box-shadow: none;
-            font-size: 14px;
+            font-size: 13px;
         }
         .btn-secondary:hover { background-color: transparent; color: #888; transform: none; }
 
@@ -120,6 +113,7 @@
             min-height: 20px;
         }
 
+        /* 极简聊天记录流 */
         .history-container {
             margin-top: 10px; 
             max-height: 280px; 
@@ -138,23 +132,23 @@
 
         .word-bubble { 
             padding: 12px 20px; 
-            border-radius: 18px; 
+            border-radius: 16px; 
             text-align: center; 
+            font-weight: 500; 
             font-size: 15px; 
-            font-weight: 500;
             color: var(--text-main);
-            max-width: 42%;
+            max-width: 40%;
             word-break: break-all;
         }
-        .word-a { background-color: var(--soft-pink); color: #D87A94; border-bottom-right-radius: 6px; }
-        .word-b { background-color: var(--soft-lilac); color: #8E7AA8; border-bottom-left-radius: 6px; }
+        .word-a { background-color: var(--soft-pink); color: #D87A94; border-bottom-right-radius: 4px; }
+        .word-b { background-color: var(--soft-lilac); color: #8E7AA8; border-bottom-left-radius: 4px; }
         
-        .vs-mark { font-size: 13px; color: #E0E0E0; margin: 0 12px; }
+        .vs-mark { font-size: 12px; color: #E0E0E0; margin: 0 12px; }
 
+        /* 大结局排版 */
         .poster { text-align: center; }
-        .poster-title { font-size: 24px; color: var(--primary-pink); margin-bottom: 8px; font-weight: 600;}
+        .poster-title { font-size: 24px; color: var(--primary-pink); margin-bottom: 8px;}
         .poster-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 30px;}
-        
         .final-word-box {
             background: var(--cream);
             padding: 24px;
@@ -163,7 +157,7 @@
             margin-bottom: 30px;
         }
         .final-word-box span { display: block; font-size: 12px; color: #999; margin-bottom: 8px;}
-        .final-word-box b { font-size: 28px; color: var(--primary-pink); letter-spacing: 2px; font-weight: 600;}
+        .final-word-box b { font-size: 28px; color: var(--primary-pink); letter-spacing: 2px;}
     </style>
 </head>
 <body>
@@ -195,7 +189,7 @@
             
             <div id="game-play-area" class="hidden">
                 <input type="text" id="word-input" placeholder="想到什么词？" maxlength="20">
-                <button onclick="submitWord()">提交词语</button>
+                <button onclick="submitWord()">提交</button>
             </div>
 
             <div id="history-area" class="hidden">
@@ -342,9 +336,11 @@
 
                     const isMeA = (myName === data.player_a_name);
 
+                    // 判断是否被清空（意味着新一轮），或者谁还没提交
                     if (data.player_a_word === null && data.player_b_word === null) {
                         statusEl.innerText = `第 ${data.current_round} 轮`;
                         playArea.classList.remove('hidden');
+                        // 如果输入框有词，说明是刚清空的，就不动它
                     } else {
                         const iSubmitted = isMeA ? data.has_a_submitted : data.has_b_submitted;
                         if (iSubmitted) {
@@ -367,6 +363,7 @@
                 const div = document.createElement('div');
                 div.className = `history-item`;
                 
+                // 赢了的加个边框特效，输了的就普通展示
                 const styleA = isWin ? 'border: 1px solid #E8F5E9;' : '';
                 const styleB = isWin ? 'border: 1px solid #E8F5E9;' : '';
 
