@@ -65,59 +65,76 @@
         }
         button:hover { background-color: var(--hover-pink); transform: translateY(-2px); }
         button:disabled { background-color: #ccc; cursor: not-allowed; transform: none; }
+        
         .room-code {
-            font-size: 32px;
+            font-size: 28px;
             font-weight: bold;
             color: var(--primary-pink);
             letter-spacing: 4px;
             text-align: center;
-            margin: 15px 0;
-            padding: 12px;
+            margin: 10px 0;
+            padding: 10px;
             background: var(--cream);
             border-radius: var(--radius);
             border: 2px dashed var(--accent-lilac);
         }
         .status-text { text-align: center; font-weight: bold; margin-top: 10px; color: #555;}
         
-        /* 历史记录列表样式 */
-        .history-container {
-            margin-top: 20px;
-            border-top: 1px dashed #eee;
-            padding-top: 15px;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-        .history-title {
-            font-size: 14px;
-            color: #999;
+        /* 结算面板样式 */
+        .result-panel {
+            background-color: var(--cream);
+            border-radius: var(--radius);
+            padding: 15px;
+            margin-top: 15px;
             text-align: center;
-            margin-bottom: 10px;
+            border: 1px dashed var(--accent-lilac);
+        }
+        .result-panel.lose {
+            background-color: #FFF0F1; /* 柔和的失败红 */
+            border-color: #FFCDD2;
+        }
+        .result-panel.win {
+            background-color: #E8F5E9; /* 柔和的成功绿 */
+            border-color: #C8E6C9;
+        }
+        .words-display {
+            display: flex;
+            justify-content: space-around;
+            margin: 15px 0;
+        }
+        .word-box {
+            background: white;
+            padding: 10px 15px;
+            border-radius: 10px;
+            border: 1px solid #eee;
+            width: 40%;
+            font-weight: bold;
+            color: var(--primary-pink);
+            word-break: break-all;
+        }
+        .word-box span {
+            display: block;
+            font-size: 12px;
+            color: #888;
+            font-weight: normal;
+            margin-bottom: 5px;
+        }
+        
+        /* 历史记录 */
+        .history-list {
+            margin-top: 15px;
+            max-height: 120px;
+            overflow-y: auto;
+            font-size: 13px;
+            color: #888;
+            border-top: 1px dashed #eee;
+            padding-top: 10px;
         }
         .history-item {
-            background-color: var(--cream);
-            padding: 10px;
-            border-radius: 10px;
-            margin-bottom: 8px;
-            font-size: 14px;
             display: flex;
             justify-content: space-between;
-            align-items: center;
-        }
-        .history-item.win-round {
-            background-color: #E8F5E9;
-            border: 1px solid #C8E6C9;
-        }
-        .word-tag { background: white; padding: 2px 8px; border-radius: 5px; border: 1px solid #eee; }
-        
-        .win-banner {
-            text-align: center;
-            background: #E8F5E9;
-            color: #2E7D32;
-            padding: 15px;
-            border-radius: var(--radius);
-            font-weight: bold;
-            font-size: 18px;
-            margin-top: 20px;
+            padding: 5px 10px;
+            border-bottom: 1px dashed #eee;
         }
     </style>
 </head>
@@ -127,7 +144,7 @@
         <!-- 首页 -->
         <div id="view-home">
             <h2>同词相遇 🌸</h2>
-            <p>默契大考验，直到你们想出同一个词</p>
+            <p>直到你们想出同一个词</p>
             <input type="text" id="nickname" placeholder="输入你的昵称" maxlength="10">
             <button onclick="createGame()">创建新房间</button>
             <button onclick="showJoinView()" style="background-color: var(--accent-lilac); color: #555;">加入房间</button>
@@ -148,21 +165,27 @@
             <div class="room-code" id="display-room-code">0000</div>
             <div id="room-status" class="status-text">等待对方加入...</div>
             
-            <!-- 胜利横幅 -->
-            <div id="win-banner" class="win-banner hidden">
-                🎉 恭喜！你们的心有灵犀！
-            </div>
-
             <!-- 词语提交区 -->
             <div id="game-play-area" class="hidden" style="margin-top: 20px;">
                 <input type="text" id="word-input" placeholder="输入你想到的词..." maxlength="20" style="text-align: center;">
                 <button onclick="submitWord()">提交</button>
             </div>
 
+            <!-- 双方提交后的结算展示区 -->
+            <div id="result-area" class="hidden">
+                <div id="result-panel" class="result-panel">
+                    <h3 id="result-title" style="margin: 0; color: #555;">结算</h3>
+                    <div class="words-display">
+                        <div class="word-box" id="word-a"><span id="name-a">玩家A</span>词语A</div>
+                        <div class="word-box" id="word-b"><span id="name-b">玩家B</span>词语B</div>
+                    </div>
+                </div>
+                <button id="next-btn" onclick="requestNextRound()" style="margin-top: 15px;">准备好了，下一局</button>
+            </div>
+
             <!-- 历史记录展示区 -->
-            <div id="history-area" class="history-container hidden">
-                <div class="history-title">—— 过往回合记录 ——</div>
-                <div id="history-list"></div>
+            <div id="history-area" class="hidden">
+                <div class="history-list" id="history-list"></div>
             </div>
             
             <button onclick="goHome()" style="background-color: transparent; color: #888; box-shadow: none; border: 1px solid #ddd; margin-top: 20px;">退出房间</button>
@@ -170,6 +193,7 @@
     </div>
 
     <script>
+        // 你的 Supabase 配置
         const SUPABASE_URL = 'https://wpvvgctsxgljzikrtedk.supabase.co'; 
         const SUPABASE_ANON_KEY = 'sb_publishable_Ecr2t1v8CEUG1LwPNsLvbQ_5F0BXm2y';
         
@@ -178,8 +202,6 @@
         let currentUser = null;
         let currentRoomCode = null;
         let pollInterval = null;
-        let playerAName = "";
-        let playerBName = "";
         let myName = "";
 
         function showView(viewId) {
@@ -265,30 +287,44 @@
 
                 const statusEl = document.getElementById('room-status');
                 const playArea = document.getElementById('game-play-area');
+                const resultArea = document.getElementById('result-area');
                 const historyArea = document.getElementById('history-area');
-                const winBanner = document.getElementById('win-banner');
-
-                playerAName = data.player_a_name || "玩家A";
-                playerBName = data.player_b_name || "玩家B";
 
                 if (data.status === 'waiting') {
                     statusEl.innerText = "等待对方加入...";
                     playArea.classList.add('hidden');
+                    resultArea.classList.add('hidden');
                     historyArea.classList.add('hidden');
                 } else if (data.status === 'playing') {
-                    // 判断我是不是 A
-                    const isMeA = (myName === data.player_a_name);
-                    const myOpponentName = isMeA ? playerBName : playerAName;
+                    historyArea.classList.remove('hidden');
+                    renderHistory(data.history);
 
-                    if (data.is_win) {
-                        // 最终胜利
-                        statusEl.innerText = "游戏结束";
+                    // 判断我是不是玩家A
+                    const isMeA = (myName === data.player_a_name);
+
+                    // 如果双方都提交了
+                    if (data.has_a_submitted && data.has_b_submitted) {
+                        statusEl.innerText = `第 ${data.current_round} 回合 结算`;
                         playArea.classList.add('hidden');
-                        winBanner.classList.remove('hidden');
-                    } else {
-                        winBanner.classList.add('hidden');
+                        resultArea.classList.remove('hidden');
+                        document.getElementById('next-btn').classList.remove('hidden');
+
+                        const resultPanel = document.getElementById('result-panel');
+                        const isWin = (data.player_a_word === data.player_b_word);
                         
-                        // 检查我是不是已经提交了
+                        document.getElementById('result-title').innerText = isWin ? "🎉 同词相遇！" : "💔 擦肩而过";
+                        resultPanel.className = `result-panel ${isWin ? 'win' : 'lose'}`;
+
+                        document.getElementById('word-a').innerHTML = `<span>${data.player_a_name}</span>${data.player_a_word}`;
+                        document.getElementById('word-b').innerHTML = `<span>${data.player_b_name}</span>${data.player_b_word}`;
+
+                        if (isWin) {
+                            document.getElementById('next-btn').classList.add('hidden'); 
+                        }
+
+                    } else {
+                        // 没全提交
+                        resultArea.classList.add('hidden');
                         const iSubmitted = isMeA ? data.has_a_submitted : data.has_b_submitted;
                         if (iSubmitted) {
                             statusEl.innerText = "已提交，等待对方...";
@@ -298,32 +334,27 @@
                             playArea.classList.remove('hidden');
                         }
                     }
-
-                    // 渲染历史记录
-                    if (data.history && data.history.length > 0) {
-                        historyArea.classList.remove('hidden');
-                        const listEl = document.getElementById('history-list');
-                        listEl.innerHTML = '';
-                        
-                        data.history.forEach(item => {
-                            const isWinRound = (item.player_a_word === item.player_b_word);
-                            const div = document.createElement('div');
-                            div.className = `history-item ${isWinRound ? 'win-round' : ''}`;
-                            
-                            // 根据我是谁，把对方的名字放在前面（或者标明）
-                            div.innerHTML = `
-                                <span style="color:#888;">第${item.round_number}局</span>
-                                <div>
-                                    <span class="word-tag">${isMeA ? item.player_a_word : item.player_b_word}</span> 
-                                    <span style="color:#ccc; margin: 0 5px;">VS</span> 
-                                    <span class="word-tag">${isMeA ? item.player_b_word : item.player_a_word}</span>
-                                </div>
-                            `;
-                            listEl.appendChild(div);
-                        });
-                    }
                 }
             } catch (err) { console.error("轮询出错", err); }
+        }
+
+        function renderHistory(history) {
+            if (!history || history.length === 0) {
+                document.getElementById('history-list').innerHTML = '<div style="text-align:center; padding:10px;">暂无记录</div>';
+                return;
+            }
+            const listEl = document.getElementById('history-list');
+            listEl.innerHTML = '';
+            history.forEach(item => {
+                const isWin = (item.player_a_word === item.player_b_word);
+                const div = document.createElement('div');
+                div.className = 'history-item';
+                div.innerHTML = `
+                    <span>第${item.round_number}局</span>
+                    <span>${item.player_a_word} VS ${item.player_b_word} ${isWin ? '🎉' : ''}</span>
+                `;
+                listEl.appendChild(div);
+            });
         }
 
         async function submitWord() {
@@ -334,8 +365,17 @@
                 if (error) throw error;
                 if (data.error) throw new Error(data.error);
                 document.getElementById('word-input').value = '';
-                checkRoomState(); // 提交后立刻更新状态
+                checkRoomState();
             } catch (err) { alert("提交失败: " + err.message); }
+        }
+
+        // 点击“下一局”
+        async function requestNextRound() {
+            try {
+                const { data, error } = await supabaseClient.rpc('next_round', { p_code: currentRoomCode });
+                if (error) throw error;
+                checkRoomState();
+            } catch (err) { alert("刷新失败: " + err.message); }
         }
     </script>
 </body>
