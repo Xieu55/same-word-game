@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>同词相遇</title>
+    <!-- 引入可爱的圆体英文字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
@@ -20,13 +22,15 @@
         body {
             background-color: var(--bg-color);
             color: var(--text-main);
-            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", Roboto, sans-serif;
+            /* 中文优先用苹方圆体，英文数字用 Quicksand/Nunito */
+            font-family: 'Quicksand', 'Nunito', -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
             margin: 0;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
             padding: 20px;
+            -webkit-font-smoothing: antialiased; /* 让字体在手机上更平滑 */
         }
 
         .card {
@@ -42,33 +46,37 @@
             text-align: center;
             font-size: 11px;
             color: #C0C0C0;
-            letter-spacing: 1px;
+            letter-spacing: 1.5px;
             margin-bottom: 24px;
+            font-weight: 700; /* 字母加粗一点更可爱 */
         }
-        .room-header b { color: #999; font-weight: normal; margin-left: 4px;}
+        .room-header b { color: #999; margin-left: 4px;}
 
         h2 { 
             text-align: center; 
-            font-size: 22px; 
-            font-weight: 500;
+            font-size: 24px; 
+            font-weight: 700;
             color: var(--text-main); 
             margin: 0 0 8px 0; 
+            letter-spacing: 0.5px;
         }
         p { 
             text-align: center; 
             font-size: 13px; 
             color: var(--text-muted); 
             margin-bottom: 32px; 
+            font-weight: 600;
         }
 
-        /* 输入框和按钮 */
         input {
             width: 100%;
             padding: 16px;
             border-radius: var(--radius);
             border: 1.5px solid transparent;
             background-color: var(--cream);
-            font-size: 16px;
+            font-size: 15px;
+            font-family: inherit; /* 继承外面的圆体 */
+            font-weight: 600;
             box-sizing: border-box;
             margin-bottom: 12px;
             outline: none;
@@ -78,7 +86,7 @@
             transition: all 0.3s;
         }
         input:focus { border-color: var(--primary-pink); }
-        input::placeholder { color: #D0D0D0; }
+        input::placeholder { color: #D0D0D0; font-weight: 500;}
 
         button {
             background-color: var(--primary-pink);
@@ -87,7 +95,9 @@
             border-radius: var(--radius);
             padding: 16px;
             font-size: 16px;
-            font-weight: 500;
+            font-family: inherit;
+            font-weight: 700; /* 按钮字加粗圆润 */
+            letter-spacing: 1px;
             width: 100%;
             cursor: pointer;
             transition: all 0.2s ease;
@@ -102,55 +112,54 @@
             color: #B0B0B0;
             box-shadow: none;
             font-size: 14px;
+            font-weight: 600;
         }
         .btn-secondary:hover { background-color: transparent; color: #888; transform: none; }
 
         .status-text { 
             text-align: center; 
-            font-size: 14px; 
+            font-size: 15px; 
             color: var(--text-muted); 
             margin-bottom: 24px;
-            min-height: 20px;
+            min-height: 22px;
+            font-weight: 600;
         }
 
-        /* 极简聊天记录流 */
         .history-container {
             margin-top: 10px; 
             max-height: 280px; 
             overflow-y: auto;
             padding-bottom: 10px;
         }
-        
-        /* 修复闪烁：只在第一次渲染时有动画 */
         .history-item { 
             display: flex; 
             align-items: center; 
             justify-content: center; 
             margin-bottom: 16px; 
+            animation: fadeIn 0.4s ease-out;
         }
-        .history-item.new-anim { animation: fadeIn 0.4s ease-out; }
         
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
         .word-bubble { 
             padding: 12px 20px; 
-            border-radius: 16px; 
+            border-radius: 18px; 
             text-align: center; 
-            font-weight: 500; 
-            font-size: 15px; 
+            font-size: 16px; 
+            font-weight: 700;
             color: var(--text-main);
-            max-width: 40%;
+            max-width: 42%;
             word-break: break-all;
         }
-        .word-a { background-color: var(--soft-pink); color: #D87A94; border-bottom-right-radius: 4px; }
-        .word-b { background-color: var(--soft-lilac); color: #8E7AA8; border-bottom-left-radius: 4px; }
+        .word-a { background-color: var(--soft-pink); color: #D87A94; border-bottom-right-radius: 6px; }
+        .word-b { background-color: var(--soft-lilac); color: #8E7AA8; border-bottom-left-radius: 6px; }
         
-        .vs-mark { font-size: 12px; color: #E0E0E0; margin: 0 12px; }
+        .vs-mark { font-size: 14px; color: #E0E0E0; margin: 0 12px; font-weight: 700;}
 
-        /* 大结局排版 */
         .poster { text-align: center; }
-        .poster-title { font-size: 24px; color: var(--primary-pink); margin-bottom: 8px;}
-        .poster-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 30px;}
+        .poster-title { font-size: 26px; color: var(--primary-pink); margin-bottom: 8px; font-weight: 700;}
+        .poster-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 30px; font-weight: 600;}
+        
         .final-word-box {
             background: var(--cream);
             padding: 24px;
@@ -158,8 +167,8 @@
             box-shadow: 0 8px 32px rgba(247, 168, 184, 0.15);
             margin-bottom: 30px;
         }
-        .final-word-box span { display: block; font-size: 12px; color: #999; margin-bottom: 8px;}
-        .final-word-box b { font-size: 28px; color: var(--primary-pink); letter-spacing: 2px;}
+        .final-word-box span { display: block; font-size: 12px; color: #999; margin-bottom: 8px; font-weight: 600;}
+        .final-word-box b { font-size: 30px; color: var(--primary-pink); letter-spacing: 2px;}
     </style>
 </head>
 <body>
@@ -180,7 +189,7 @@
             <input type="text" id="join-code" placeholder="输入4位房间号" maxlength="4" style="font-size: 24px; letter-spacing: 4px;">
             <button onclick="joinGame()">确认加入</button>
             <button onclick="goHome()" class="btn-secondary">返回</button>
-            <div id="join-error" style="color: #E57373; text-align: center; font-size: 13px; margin-top: 10px;" class="hidden"></div>
+            <div id="join-error" style="color: #E57373; text-align: center; font-size: 13px; margin-top: 10px; font-weight: 600;" class="hidden"></div>
         </div>
 
         <!-- 房间内 -->
@@ -191,7 +200,7 @@
             
             <div id="game-play-area" class="hidden">
                 <input type="text" id="word-input" placeholder="想到什么词？" maxlength="20">
-                <button onclick="submitWord()">提交</button>
+                <button onclick="submitWord()">提交词语</button>
             </div>
 
             <div id="history-area" class="hidden">
@@ -229,9 +238,6 @@
         let currentRoomCode = null;
         let pollInterval = null;
         let myName = "";
-        
-        // 记录上一次的回合数，用来判断是否进入了新一轮
-        let lastRound = 0; 
 
         function showView(viewId) {
             document.querySelectorAll('.card > div').forEach(el => el.classList.add('hidden'));
@@ -304,7 +310,6 @@
         function enterRoomView(code) {
             showView('view-room');
             document.getElementById('display-room-code').innerText = code;
-            lastRound = 0; // 重置回合记录
             checkRoomState();
             if(pollInterval) clearInterval(pollInterval);
             pollInterval = setInterval(checkRoomState, 1500); 
@@ -342,14 +347,7 @@
 
                     const isMeA = (myName === data.player_a_name);
 
-                    // 🟢 自动清空上一轮的词
                     if (data.player_a_word === null && data.player_b_word === null) {
-                        // 如果当前回合数 > 记录的回合数，说明是刚进入新一轮
-                        if (data.current_round > lastRound) {
-                            document.getElementById('word-input').value = ''; // 自动清空输入框
-                            lastRound = data.current_round;
-                        }
-                        
                         statusEl.innerText = `第 ${data.current_round} 轮`;
                         playArea.classList.remove('hidden');
                     } else {
@@ -366,21 +364,13 @@
             } catch (err) { console.error("轮询出错", err); }
         }
 
-        // 修复闪烁问题：判断是不是新增的
         function renderHistory(history) {
             const listEl = document.getElementById('history-list');
-            
-            // 记录当前有的最新轮数
-            const latestRound = history[0]?.round_number || 0;
-            // 如果列表中第一个元素的轮数和最新一致，说明没更新，直接return不重绘
-            if (listEl.dataset.latestRound == latestRound) return;
-            listEl.dataset.latestRound = latestRound;
-
             listEl.innerHTML = '';
-            history.forEach((item, index) => {
+            history.forEach(item => {
                 const isWin = (item.player_a_word === item.player_b_word && item.player_a_word !== null);
                 const div = document.createElement('div');
-                div.className = `history-item ${index === 0 ? 'new-anim' : ''}`; 
+                div.className = `history-item`;
                 
                 const styleA = isWin ? 'border: 1px solid #E8F5E9;' : '';
                 const styleB = isWin ? 'border: 1px solid #E8F5E9;' : '';
