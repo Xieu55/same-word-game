@@ -8,12 +8,12 @@
     <style>
         :root {
             --bg-color: #FFF9FA;        /* 极淡的奶油粉背景 */
-            --text-main: #5C5C5C;       /* 柔和深灰，不刺眼 */
+            --text-main: #5C5C5C;       
             --text-muted: #A8A8A8;
-            --primary-pink: #F7A8B8;    /* 主粉色 */
-            --soft-pink: #FCEEF0;       /* 淡粉卡片 */
-            --soft-lilac: #F3EEFA;      /* 淡紫卡片 */
-            --cream: #FFFFFF;           /* 纯白输入框 */
+            --primary-pink: #F7A8B8;    
+            --soft-pink: #FCEEF0;       
+            --soft-lilac: #F3EEFA;      
+            --cream: #FFFFFF;           
             --radius: 20px;
         }
         
@@ -38,7 +38,6 @@
 
         .hidden { display: none !important; }
 
-        /* 顶部房间号极简设计 */
         .room-header {
             text-align: center;
             font-size: 11px;
@@ -62,13 +61,14 @@
             margin-bottom: 32px; 
         }
 
+        /* 输入框和按钮 */
         input {
             width: 100%;
             padding: 16px;
             border-radius: var(--radius);
             border: 1.5px solid transparent;
             background-color: var(--cream);
-            font-size: 15px;
+            font-size: 16px;
             box-sizing: border-box;
             margin-bottom: 12px;
             outline: none;
@@ -86,7 +86,7 @@
             border: none;
             border-radius: var(--radius);
             padding: 16px;
-            font-size: 15px;
+            font-size: 16px;
             font-weight: 500;
             width: 100%;
             cursor: pointer;
@@ -101,7 +101,7 @@
             background-color: transparent;
             color: #B0B0B0;
             box-shadow: none;
-            font-size: 13px;
+            font-size: 14px;
         }
         .btn-secondary:hover { background-color: transparent; color: #888; transform: none; }
 
@@ -120,13 +120,15 @@
             overflow-y: auto;
             padding-bottom: 10px;
         }
+        
+        /* 修复闪烁：只在第一次渲染时有动画 */
         .history-item { 
             display: flex; 
             align-items: center; 
             justify-content: center; 
             margin-bottom: 16px; 
-            animation: fadeIn 0.4s ease-out;
         }
+        .history-item.new-anim { animation: fadeIn 0.4s ease-out; }
         
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -227,6 +229,9 @@
         let currentRoomCode = null;
         let pollInterval = null;
         let myName = "";
+        
+        // 记录上一次的回合数，用来判断是否进入了新一轮
+        let lastRound = 0; 
 
         function showView(viewId) {
             document.querySelectorAll('.card > div').forEach(el => el.classList.add('hidden'));
@@ -299,6 +304,7 @@
         function enterRoomView(code) {
             showView('view-room');
             document.getElementById('display-room-code').innerText = code;
+            lastRound = 0; // 重置回合记录
             checkRoomState();
             if(pollInterval) clearInterval(pollInterval);
             pollInterval = setInterval(checkRoomState, 1500); 
@@ -336,11 +342,16 @@
 
                     const isMeA = (myName === data.player_a_name);
 
-                    // 判断是否被清空（意味着新一轮），或者谁还没提交
+                    // 🟢 自动清空上一轮的词
                     if (data.player_a_word === null && data.player_b_word === null) {
+                        // 如果当前回合数 > 记录的回合数，说明是刚进入新一轮
+                        if (data.current_round > lastRound) {
+                            document.getElementById('word-input').value = ''; // 自动清空输入框
+                            lastRound = data.current_round;
+                        }
+                        
                         statusEl.innerText = `第 ${data.current_round} 轮`;
                         playArea.classList.remove('hidden');
-                        // 如果输入框有词，说明是刚清空的，就不动它
                     } else {
                         const iSubmitted = isMeA ? data.has_a_submitted : data.has_b_submitted;
                         if (iSubmitted) {
@@ -355,15 +366,22 @@
             } catch (err) { console.error("轮询出错", err); }
         }
 
+        // 修复闪烁问题：判断是不是新增的
         function renderHistory(history) {
             const listEl = document.getElementById('history-list');
+            
+            // 记录当前有的最新轮数
+            const latestRound = history[0]?.round_number || 0;
+            // 如果列表中第一个元素的轮数和最新一致，说明没更新，直接return不重绘
+            if (listEl.dataset.latestRound == latestRound) return;
+            listEl.dataset.latestRound = latestRound;
+
             listEl.innerHTML = '';
-            history.forEach(item => {
+            history.forEach((item, index) => {
                 const isWin = (item.player_a_word === item.player_b_word && item.player_a_word !== null);
                 const div = document.createElement('div');
-                div.className = `history-item`;
+                div.className = `history-item ${index === 0 ? 'new-anim' : ''}`; 
                 
-                // 赢了的加个边框特效，输了的就普通展示
                 const styleA = isWin ? 'border: 1px solid #E8F5E9;' : '';
                 const styleB = isWin ? 'border: 1px solid #E8F5E9;' : '';
 
