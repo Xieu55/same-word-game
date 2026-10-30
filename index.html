@@ -137,6 +137,7 @@
 <body>
 
     <div class="card" id="app">
+        <!-- 首页 -->
         <div id="view-home">
             <h2>同词相遇 🌸</h2>
             <p>直到你们想出同一个词</p>
@@ -145,6 +146,7 @@
             <button onclick="showJoinView()" style="background-color: var(--accent-lilac); color: #555;">加入房间</button>
         </div>
 
+        <!-- 加入房间 -->
         <div id="view-join" class="hidden">
             <h2>加入房间</h2>
             <input type="text" id="join-code" placeholder="输入4位房间号" maxlength="4" style="text-align: center; font-size: 24px; letter-spacing: 4px;">
@@ -153,16 +155,19 @@
             <div id="join-error" style="color: red; text-align: center; font-size: 14px; margin-top: 10px;" class="hidden"></div>
         </div>
 
+        <!-- 房间内 -->
         <div id="view-room" class="hidden">
             <h2>房间中</h2>
             <div class="room-code" id="display-room-code">0000</div>
             <div id="room-status" class="status-text">等待对方加入...</div>
             
+            <!-- 词语提交区 -->
             <div id="game-play-area" class="hidden" style="margin-top: 20px;">
                 <input type="text" id="word-input" placeholder="输入你想到的词..." maxlength="20" style="text-align: center;">
                 <button onclick="submitWord()">提交</button>
             </div>
 
+            <!-- 双方提交后的结算展示区 -->
             <div id="result-area" class="hidden">
                 <div id="result-panel" class="result-panel">
                     <h3 id="result-title" style="margin: 0; color: #555;">结算</h3>
@@ -174,6 +179,7 @@
                 <button id="next-btn" onclick="requestNextRound()" style="margin-top: 15px;">准备好了，下一局</button>
             </div>
 
+            <!-- 历史记录展示区 -->
             <div id="history-area" class="hidden">
                 <div class="history-list" id="history-list"></div>
             </div>
@@ -286,6 +292,7 @@
                     historyArea.classList.add('hidden');
                 } else if (data.status === 'playing') {
                     
+                    // 只要有一方提交了，就展示历史记录
                     if (data.has_a_submitted || data.has_b_submitted) {
                         historyArea.classList.remove('hidden');
                         renderHistory(data.history, data.player_a_name, data.player_b_name);
@@ -295,27 +302,32 @@
 
                     const isMeA = (myName === data.player_a_name);
 
-                    // 👇 修复重点：只要双方都提交了，强行展示结算面板和下一局按钮
+                    // 只要双方都提交了，强行展示结算面板和下一局按钮
                     if (data.has_a_submitted && data.has_b_submitted) {
                         statusEl.innerText = `第 ${data.current_round} 回合 结算`;
                         playArea.classList.add('hidden');
                         resultArea.classList.remove('hidden');
-                        document.getElementById('next-btn').classList.remove('hidden'); // 强制显示按钮
+                        document.getElementById('next-btn').classList.remove('hidden'); 
                         
                         const resultPanel = document.getElementById('result-panel');
-                        const isWin = (data.player_a_word === data.player_b_word);
+                        const isWin = (data.player_a_word === data.player_b_word && data.player_a_word !== null);
                         
                         document.getElementById('result-title').innerText = isWin ? "🎉 同词相遇！" : "💔 擦肩而过";
                         resultPanel.className = `result-panel ${isWin ? 'win' : 'lose'}`;
 
-                        document.getElementById('word-a').innerHTML = `<span>${data.player_a_name}</span>${data.player_a_word}`;
-                        document.getElementById('word-b').innerHTML = `<span>${data.player_b_name}</span>${data.player_b_word}`;
+                        // 防止显示 null
+                        const wordA = data.player_a_word || "...";
+                        const wordB = data.player_b_word || "...";
+
+                        document.getElementById('word-a').innerHTML = `<span>${data.player_a_name}</span>${wordA}`;
+                        document.getElementById('word-b').innerHTML = `<span>${data.player_b_name}</span>${wordB}`;
 
                         if (isWin) {
-                            document.getElementById('next-btn').classList.add('hidden'); // 赢了不给下一局
+                            document.getElementById('next-btn').classList.add('hidden'); 
                         }
 
                     } else {
+                        // 只有一方提交了
                         resultArea.classList.add('hidden');
                         const iSubmitted = isMeA ? data.has_a_submitted : data.has_b_submitted;
                         if (iSubmitted) {
@@ -330,6 +342,7 @@
             } catch (err) { console.error("轮询出错", err); }
         }
 
+        // 优化历史记录：带上玩家名字
         function renderHistory(history, nameA, nameB) {
             const listEl = document.getElementById('history-list');
             if (!history || history.length === 0) {
@@ -338,7 +351,7 @@
             }
             listEl.innerHTML = '';
             history.forEach(item => {
-                const isWin = (item.player_a_word === item.player_b_word);
+                const isWin = (item.player_a_word === item.player_b_word && item.player_a_word !== null);
                 const div = document.createElement('div');
                 div.className = `history-item ${isWin ? 'win-round' : ''}`;
                 div.innerHTML = `
