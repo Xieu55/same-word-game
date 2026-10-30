@@ -78,12 +78,15 @@
             border: 2px dashed var(--accent-lilac);
         }
         .status-text { text-align: center; font-weight: bold; margin-top: 16px; color: #555;}
-        .error-msg { color: #e74c3c; text-align: center; font-size: 14px; margin-top: 10px; }
+        .result-box { text-align: center; padding: 20px; border-radius: var(--radius); margin-top: 20px; }
+        .result-win { background-color: #E8F5E9; color: #2E7D32; }
+        .result-lose { background-color: #FFEBEE; color: #C62828; }
     </style>
 </head>
 <body>
 
     <div class="card" id="app">
+        <!-- 首页 -->
         <div id="view-home">
             <h2>同词相遇 🌸</h2>
             <p>默契大考验，看看你们能不能想到同一个词</p>
@@ -92,6 +95,7 @@
             <button onclick="showJoinView()" style="background-color: var(--accent-lilac); color: #555;">加入房间</button>
         </div>
 
+        <!-- 加入房间 -->
         <div id="view-join" class="hidden">
             <h2>加入房间</h2>
             <input type="text" id="join-code" placeholder="输入4位房间号" maxlength="4" style="text-align: center; font-size: 24px; letter-spacing: 4px;">
@@ -100,17 +104,29 @@
             <div id="join-error" class="error-msg hidden"></div>
         </div>
 
+        <!-- 房间内 -->
         <div id="view-room" class="hidden">
             <h2>房间中</h2>
             <div class="room-code" id="display-room-code">0000</div>
             <p style="margin-bottom: 10px;">把房间号发给朋友吧</p>
             <div id="room-status" class="status-text">等待对方加入...</div>
             
+            <!-- 词语提交区 -->
             <div id="game-play-area" class="hidden" style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;">
                 <p>输入你想到的词：</p>
                 <input type="text" id="word-input" placeholder="输入词语..." maxlength="20">
                 <button onclick="submitWord()">提交</button>
             </div>
+
+            <!-- 结果展示区 -->
+            <div id="result-area" class="hidden">
+                <div id="result-box" class="result-box">
+                    <h3 id="result-title" style="margin: 0;"></h3>
+                    <p id="result-words" style="margin: 10px 0;"></p>
+                </div>
+                <button onclick="nextRound()" style="margin-top: 15px;">再来一局</button>
+            </div>
+            
             <button onclick="goHome()" style="background-color: transparent; color: #888; box-shadow: none; border: 1px solid #ddd; margin-top: 20px;">退出房间</button>
         </div>
     </div>
@@ -119,7 +135,6 @@
         const SUPABASE_URL = 'https://wpvvgctsxgljzikrtedk.supabase.co'; 
         const SUPABASE_ANON_KEY = 'sb_publishable_Ecr2t1v8CEUG1LwPNsLvbQ_5F0BXm2y';
         
-        // 修改了这里的变量名，避免和官方库冲突
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let currentUser = null;
@@ -165,20 +180,14 @@
         async function createGame() {
             if(!checkNickname()) return;
             const name = document.getElementById('nickname').value.trim();
-            
             try {
                 await ensureAuth();
-                // 这里也改成了 supabaseClient
                 const { data, error } = await supabaseClient.rpc('create_game', { p_name: name });
-                
                 if (error) throw error;
                 if (data.error) throw new Error(data.error);
-
                 currentRoomCode = data.room_code;
                 enterRoomView(currentRoomCode);
-            } catch (err) {
-                alert(err.message);
-            }
+            } catch (err) { alert(err.message); }
         }
 
         async function joinGame() {
@@ -186,20 +195,16 @@
             const name = document.getElementById('nickname').value.trim();
             const code = document.getElementById('join-code').value.trim();
             const errorEl = document.getElementById('join-error');
-
             if(!code || code.length !== 4) {
                 errorEl.innerText = "请输入正确的4位房间号";
                 errorEl.classList.remove('hidden');
                 return;
             }
-
             try {
                 await ensureAuth();
                 const { data, error } = await supabaseClient.rpc('join_game', { p_code: code, p_name: name });
-                
                 if (error) throw error;
                 if (data.error) throw new Error(data.error);
-
                 currentRoomCode = code;
                 enterRoomView(currentRoomCode);
             } catch (err) {
@@ -218,7 +223,6 @@
 
         async function checkRoomState() {
             if(!currentRoomCode) return;
-
             try {
                 const { data, error } = await supabaseClient.rpc('get_game_state', { p_code: currentRoomCode });
                 if (error) throw error;
@@ -226,42 +230,68 @@
 
                 const statusEl = document.getElementById('room-status');
                 const playArea = document.getElementById('game-play-area');
+                const resultArea = document.getElementById('result-area');
 
                 if (data.status === 'waiting') {
                     statusEl.innerText = "等待对方加入...";
                     playArea.classList.add('hidden');
+                    resultArea.classList.add('hidden');
                 } else if (data.status === 'playing') {
-                    playArea.classList.remove('hidden');
-                    statusEl.innerText = `游戏进行中 (第 ${data.current_round} 回合)`;
-                    
-                    if(data.has_a_submitted && data.has_b_submitted) {
-                        statusEl.innerText = "双方都已提交！等待结果...";
-                    } else if (data.has_a_submitted || data.has_b_submitted) {
-                        statusEl.innerText = "有一方已提交，等待另一方...";
+                    if (data.result === 'win') {
+                        // 赢了
+                        statusEl.innerText = "默契成功！";
+                        playArea.classList.add('hidden');
+                        resultArea.classList.remove('hidden');
+                        const resultBox = document.getElementById('result-box');
+                        resultBox.className = 'result-box result-win';
+                        document.getElementById('result-title').innerText = "🎉 同词相遇！";
+                        document.getElementById('result-words').innerText = `你们都想的是：“${data.player_a_word}”`;
+                    } else if (data.result === 'lose') {
+                        // 输了
+                        statusEl.innerText = "默契失败...";
+                        playArea.classList.add('hidden');
+                        resultArea.classList.remove('hidden');
+                        const resultBox = document.getElementById('result-box');
+                        resultBox.className = 'result-box result-lose';
+                        document.getElementById('result-title').innerText = "💔 擦肩而过";
+                        document.getElementById('result-words').innerText = `她想了：“${data.player_a_word}”\n你想了：“${data.player_b_word}”`;
                     } else {
-                        statusEl.innerText = "请双方输入词语";
+                        // 进行中
+                        playArea.classList.remove('hidden');
+                        resultArea.classList.add('hidden');
+                        statusEl.innerText = `游戏进行中 (第 ${data.current_round} 回合)`;
+                        if(data.has_a_submitted && data.has_b_submitted) {
+                            statusEl.innerText = "双方都已提交！等待结果...";
+                        } else if (data.has_a_submitted || data.has_b_submitted) {
+                            statusEl.innerText = "有一方已提交，等待另一方...";
+                        } else {
+                            statusEl.innerText = "请双方输入词语";
+                        }
                     }
                 }
-
-            } catch (err) {
-                console.error("轮询出错", err);
-            }
+            } catch (err) { console.error("轮询出错", err); }
         }
 
         async function submitWord() {
             const word = document.getElementById('word-input').value.trim();
             if(!word) return alert("词语不能为空");
-
             try {
                 const { data, error } = await supabaseClient.rpc('submit_game_word', { p_code: currentRoomCode, p_word: word });
                 if (error) throw error;
                 if (data.error) throw new Error(data.error);
-
                 document.getElementById('word-input').value = '';
                 alert("提交成功！等待对方...");
-            } catch (err) {
-                alert("提交失败: " + err.message);
-            }
+            } catch (err) { alert("提交失败: " + err.message); }
+        }
+
+        async function nextRound() {
+            try {
+                const { data, error } = await supabaseClient.rpc('advance_game_round', { p_code: currentRoomCode });
+                if (error) throw error;
+                document.getElementById('word-input').value = '';
+                // 立刻刷新状态
+                checkRoomState();
+            } catch (err) { alert("推进回合失败: " + err.message); }
         }
     </script>
 </body>
