@@ -100,13 +100,17 @@
             animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); border: 2px solid #FFF;
         }
         .result-box.lose { background: linear-gradient(180deg, #FFFFFF 0%, #F5F0FA 100%); }
-        .result-title { font-size: 22px; font-weight: 800; margin: 0 0 20px 0; color: #8E7AA8; }
+        .result-box.close { background: linear-gradient(180deg, #FFFFFF 0%, #FFF0F5 100%); border-color: #FFE4EC;}
+        
+        .result-title { font-size: 20px; font-weight: 800; margin: 0 0 20px 0; color: #8E7AA8; }
+        .result-box.close .result-title { color: #D87A94; }
 
-        .result-words { display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 25px; }
+        .result-words { display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 10px;}
         .result-word {
             background: white; padding: 10px 15px; border-radius: 12px; font-weight: bold; font-size: 16px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.05); min-width: 60px; color: #8E7AA8; border: 1px solid #E8DEFF;
         }
+        .result-box.close .result-word { color: #D87A94; border-color: #FFE4EC; }
         .result-icon { font-size: 20px; color: #DDD; }
 
         #confetti-canvas {
@@ -177,13 +181,12 @@
     <!-- 单局结算弹窗 -->
     <div id="round-result-overlay" class="result-overlay hidden">
         <div id="round-result-box" class="result-box">
-            <h3 id="round-result-title" class="result-title">判定</h3>
+            <h3 id="round-result-title" class="result-title">判定中...</h3>
             <div class="result-words">
                 <div id="round-word-a" class="result-word">?</div>
                 <div class="result-icon">×</div>
                 <div id="round-word-b" class="result-word">?</div>
             </div>
-            <button onclick="nextRoundFromResult()" style="margin-bottom:0;">继续</button>
         </div>
     </div>
 
@@ -199,6 +202,28 @@
         let myName = "";
         let playerAName = "";
         let playerBName = "";
+        let isTransitioning = false;
+
+        // 💬 随机吐槽语料库
+        const tipLibrary = {
+            close: [
+                "居然这么有默契！", 
+                "差一点点就猜中了！", 
+                "脑电波快要对上了！", 
+                "方向完全一致嘛！"
+            ],
+            far: [
+                "简直是跨服聊天呀……", 
+                "你们在同一个次元吗？", 
+                "这脑回路差了十万八千里～", 
+                "一个在南极，一个在北极。"
+            ]
+        };
+
+        function getRandomTip(type) {
+            const arr = tipLibrary[type];
+            return arr[Math.floor(Math.random() * arr.length)];
+        }
 
         function showView(viewId) {
             document.querySelectorAll('.card > div').forEach(el => el.classList.add('hidden'));
@@ -216,6 +241,7 @@
             showView('view-home');
             if(pollInterval) clearInterval(pollInterval);
             currentRoomCode = null;
+            isTransitioning = false;
             document.getElementById('confetti-canvas').style.display = 'none';
         }
 
@@ -273,13 +299,42 @@
         function enterRoomView(code) {
             showView('view-room');
             document.getElementById('display-room-code').innerText = code;
+            isTransitioning = false;
             checkRoomState();
             if(pollInterval) clearInterval(pollInterval);
             pollInterval = setInterval(checkRoomState, 1500); 
         }
 
+        // 🧠 核心算法：判断两个词的相似度
+        function getSimilarityText(wordA, wordB) {
+            if (wordA === wordB) return { text: "天呐！你们想到了一起！", isClose: true };
+            
+            let a = wordA.replace(/\s/g, '').toLowerCase();
+            let b = wordB.replace(/\s/g, '').toLowerCase();
+
+            if (a.includes(b) || b.includes(a)) {
+                return { text: getRandomTip('close'), isClose: true };
+            }
+
+            let matchCount = 0;
+            let aChars = a.split('');
+            let bChars = b.split('');
+            aChars.forEach(char => {
+                if (bChars.includes(char)) matchCount++;
+            });
+
+            let similarity = (matchCount * 2) / (aChars.length + bChars.length);
+
+            if (similarity >= 0.3) {
+                return { text: getRandomTip('close'), isClose: true };
+            }
+
+            return { text: getRandomTip('far'), isClose: false };
+        }
+
         async function checkRoomState() {
-            if(!currentRoomCode) return;
+            if(!currentRoomCode || isTransitioning) return;
+
             try {
                 const { data, error } = await supabaseClient.rpc('get_game_state', { p_code: currentRoomCode });
                 if (error) throw error;
@@ -320,14 +375,37 @@
                         playArea.classList.add('hidden');
                         statusEl.innerText = `第 ${data.current_round} 轮 结算`;
                         
-                        if (overlay.classList.contains('hidden')) {
+                        if (overlay.classList.contains('hidden') && !isTransitioning) {
+                            isTransitioning = true;
+                            
                             overlay.classList.remove('hidden');
-                            document.getElementById('round-result-box').className = 'result-box lose';
-                            document.getElementById('round-result-title').innerText = '哎呀，擦肩而过～';
                             
                             const lastRound = data.history[data.history.length - 1];
-                            document.getElementById('round-word-a').innerText = isMeA ? lastRound.player_a_word : lastRound.player_b_word;
-                            document.getElementById('round-word-b').innerText = isMeA ? lastRound.player_b_word : lastRound.player_a_word;
+                            const wordA = lastRound.player_a_word;
+                            const wordB = lastRound.player_b_word;
+                            
+                            document.getElementById('round-word-a').innerText = isMeA ? wordA : wordB;
+                            document.getElementById('round-word-b').innerText = isMeA ? wordB : wordA;
+
+                            const result = getSimilarityText(wordA, wordB);
+                            const titleEl = document.getElementById('round-result-title');
+                            const boxEl = document.getElementById('round-result-box');
+                            
+                            titleEl.innerText = result.text;
+                            if (result.isClose) {
+                                boxEl.className = 'result-box close';
+                            } else {
+                                boxEl.className = 'result-box lose';
+                            }
+
+                            setTimeout(async () => {
+                                overlay.classList.add('hidden');
+                                try {
+                                    await supabaseClient.rpc('next_round', { p_code: currentRoomCode });
+                                } catch (e) { console.error(e); }
+                                isTransitioning = false; 
+                                checkRoomState(); 
+                            }, 2500);
                         }
                     } else {
                         overlay.classList.add('hidden');
@@ -343,15 +421,6 @@
                     }
                 }
             } catch (err) { console.error("轮询出错", err); }
-        }
-
-        // 🔥 点击继续时，先关闭弹窗，然后调用 next_round 清理主表数据，进入新的一轮
-        async function nextRoundFromResult() {
-            document.getElementById('round-result-overlay').classList.add('hidden');
-            try {
-                await supabaseClient.rpc('next_round', { p_code: currentRoomCode });
-                checkRoomState();
-            } catch (err) { console.error(err); }
         }
 
         function renderHistory(history) {
@@ -398,6 +467,7 @@
                 
                 showView('view-room');
                 document.getElementById('round-result-overlay').classList.add('hidden');
+                isTransitioning = false;
                 checkRoomState();
                 if(pollInterval) clearInterval(pollInterval);
                 pollInterval = setInterval(checkRoomState, 1500);
