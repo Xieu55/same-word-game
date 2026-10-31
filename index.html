@@ -34,14 +34,13 @@
         h2 { text-align: center; font-size: 24px; color: var(--text-main); margin: 0 0 8px 0; font-weight: 600;}
         p { text-align: center; font-size: 13px; color: var(--text-muted); margin-bottom: 32px; }
 
-        input, select {
+        input {
             width: 100%; padding: 16px; border-radius: var(--radius); border: 1px solid rgba(255,255,255,0.8);
             background-color: rgba(255, 255, 255, 0.6); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
             font-size: 15px; box-sizing: border-box; margin-bottom: 16px; outline: none; text-align: center; 
             color: var(--text-main); box-shadow: 0 8px 32px rgba(247, 168, 184, 0.1); transition: all 0.3s ease;
-            appearance: none; -webkit-appearance: none;
         }
-        input:focus, select:focus { border-color: var(--primary-pink); background-color: rgba(255, 255, 255, 0.9); }
+        input:focus { border-color: var(--primary-pink); background-color: rgba(255, 255, 255, 0.9); }
         input::placeholder { color: #D0D0D0; }
 
         button {
@@ -70,6 +69,34 @@
         .word-d { background-color: #FFFFFF; border: 1px solid #E9FFE4; color: #7AD886; }
         .word-e { background-color: #FFFFFF; border: 1px solid #FFF3E4; color: #D8B07A; }
         .vs-mark { font-size: 14px; color: #D0D0D0; }
+
+        /* 选项弹窗遮罩 */
+        .mode-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.6); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+            display: flex; justify-content: center; align-items: center; z-index: 100; 
+            transition: opacity 0.3s ease;
+        }
+        .mode-overlay.hidden { opacity: 0; pointer-events: none; display: flex !important; }
+
+        .mode-box {
+            background: #FFFFFF; width: 85%; max-width: 320px; border-radius: 24px; padding: 30px 20px;
+            text-align: center; box-shadow: 0 20px 50px rgba(247, 168, 184, 0.3);
+            border: 2px solid #FFF; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform: scale(1);
+        }
+        .mode-overlay.hidden .mode-box { transform: scale(0.8); }
+
+        .mode-title { font-size: 18px; font-weight: 800; margin: 0 0 20px 0; color: #8E7AA8; }
+        
+        .mode-btn-group { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 20px;}
+        .mode-btn {
+            flex: 1; min-width: 40%; padding: 14px 0; font-size: 15px; border-radius: 16px; 
+            background: rgba(247, 168, 184, 0.1); color: var(--primary-pink);
+            border: 1px solid rgba(247, 168, 184, 0.3); font-weight: 700; cursor: pointer;
+            transition: all 0.2s ease; margin-bottom: 0;
+            box-shadow: none;
+        }
+        .mode-btn:hover, .mode-btn:active { background: var(--primary-pink); color: white; transform: scale(0.95); }
 
         .result-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -113,13 +140,8 @@
             <p>看看你们的脑回路是否一致</p>
             <input type="text" id="nickname" placeholder="输入你的昵称" maxlength="10">
             
-            <select id="game-mode">
-                <!-- 🚀 这里已经改成了“多人房” -->
-                <option value="5">多人房 (最多5人)</option>
-                <option value="2">双人房 (最多2人)</option>
-            </select>
-
-            <button onclick="createGame()">创建新房间</button>
+            <!-- 去掉了下拉框，改成了按钮触发弹窗 -->
+            <button onclick="showModeSelection()">创建新房间</button>
             <button onclick="showJoinView()" class="btn-secondary">加入房间</button>
         </div>
 
@@ -170,6 +192,20 @@
         </div>
     </div>
 
+    <!-- 选择人数弹窗 -->
+    <div id="mode-overlay" class="mode-overlay hidden">
+        <div class="mode-box">
+            <h3 class="mode-title">请选择游戏人数</h3>
+            <div class="mode-btn-group">
+                <button class="mode-btn" onclick="createGame('2')">双人模式</button>
+                <button class="mode-btn" onclick="createGame('3')">3 人房</button>
+                <button class="mode-btn" onclick="createGame('4')">4 人房</button>
+                <button class="mode-btn" onclick="createGame('5')">5 人房</button>
+            </div>
+            <button class="btn-secondary" onclick="hideModeSelection()">取消</button>
+        </div>
+    </div>
+
     <div id="round-result-overlay" class="result-overlay hidden">
         <div id="round-result-box" class="result-box">
             <h3 id="round-result-title" class="result-title">判定中...</h3>
@@ -210,9 +246,19 @@
             showView('view-join');
         }
 
+        function showModeSelection() {
+            if(!checkNickname()) return;
+            document.getElementById('mode-overlay').classList.remove('hidden');
+        }
+
+        function hideModeSelection() {
+            document.getElementById('mode-overlay').classList.add('hidden');
+        }
+
         function goHome() {
             document.getElementById('join-error').classList.add('hidden');
             document.getElementById('round-result-overlay').classList.add('hidden');
+            hideModeSelection();
             showView('view-home');
             if(pollInterval) clearInterval(pollInterval);
             currentRoomCode = null;
@@ -238,11 +284,11 @@
             }
         }
 
-        async function createGame() {
-            if(!checkNickname()) return;
-            const mode = document.getElementById('game-mode').value;
+        async function createGame(mode) {
+            hideModeSelection();
             try {
                 await ensureAuth();
+                // 借用 p_name 传模式进去，比如 "鳕鱼_3" 代表3人房
                 const { data, error } = await supabaseClient.rpc('create_game', { p_name: myName + "_" + mode });
                 if (error) throw error;
                 currentRoomCode = data.room_code;
@@ -352,6 +398,7 @@
                         spectatorArea.classList.add('hidden');
                     }
                     
+                    // 判定当前在房间内的人是否都交了
                     let allSubmitted = true;
                     if (data.player_a_name) allSubmitted = allSubmitted && data.has_a_submitted;
                     if (data.player_b_name) allSubmitted = allSubmitted && data.has_b_submitted;
