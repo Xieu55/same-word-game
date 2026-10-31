@@ -29,7 +29,7 @@
             align-items: center;
             min-height: 100vh;
             padding: 20px;
-            overflow-y: auto; /* 允许大结局长列表滚动 */
+            overflow-y: auto;
         }
 
         .card { background-color: transparent; width: 100%; max-width: 360px; box-sizing: border-box; position: relative; z-index: 10; }
@@ -147,7 +147,6 @@
             </div>
 
             <div id="history-area" class="hidden">
-                <!-- 游戏进行时限制高度，以免把按钮顶下去 -->
                 <div class="history-container" id="history-list" style="max-height: 280px;"></div>
             </div>
             
@@ -168,7 +167,6 @@
                     <b id="poster-final-word" style="display: block; text-align: center; font-size: 32px; color: var(--primary-pink); letter-spacing: 2px;">-</b>
                 </div>
 
-                <!-- 🚀 彻底去掉 max-height 限制，让所有记录完全展开！ -->
                 <div class="history-container" id="poster-history-list" style="text-align: left; margin-bottom: 20px;"></div>
                 
                 <button onclick="restartGame()" style="margin-top: 10px;">再玩一次（房间不变）</button>
@@ -315,6 +313,9 @@
                 playerAName = data.player_a_name || "玩家A";
                 playerBName = data.player_b_name || "玩家B";
 
+                // 🚀 终极防呆机制：真实的回合数 = 实际玩过的历史局数 + 1
+                const actualRound = (data.history ? data.history.length : 0) + 1;
+
                 if (data.is_win) {
                     if(pollInterval) clearInterval(pollInterval);
                     document.getElementById('round-result-overlay').classList.add('hidden');
@@ -346,13 +347,12 @@
                     
                     if (data.has_a_submitted && data.has_b_submitted) {
                         playArea.classList.add('hidden');
-                        statusEl.innerText = `第 ${data.current_round} 轮 结算`;
+                        statusEl.innerText = `第 ${actualRound} 轮 结算`; 
                         
                         if (overlay.classList.contains('hidden') && !isTransitioning) {
                             isTransitioning = true;
                             overlay.classList.remove('hidden'); 
                             
-                            // 因为数据库是倒序排的，[0] 就是最新的一局！
                             const lastRound = data.history[0];
                             
                             const wordA = lastRound.player_a_word;
@@ -390,7 +390,8 @@
                             statusEl.innerText = "已提交，等待对方...";
                             playArea.classList.add('hidden');
                         } else {
-                            statusEl.innerText = `第 ${data.current_round} 轮`;
+                            // 🚀 这里也替换成真实的回合数
+                            statusEl.innerText = `第 ${actualRound} 轮`;
                             playArea.classList.remove('hidden');
                         }
                     }
