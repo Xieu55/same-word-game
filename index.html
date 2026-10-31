@@ -57,10 +57,13 @@
         @keyframes breathe { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
 
         .history-container { margin-top: 10px; overflow-y: auto; padding-bottom: 10px; }
-        .history-item { display: flex; align-items: center; justify-content: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;}
+        .history-item { display: flex; align-items: flex-start; justify-content: center; margin-bottom: 20px; flex-wrap: wrap; gap: 6px;}
 
+        /* 带名字的词语气泡组 */
+        .word-group { display: flex; flex-direction: column; align-items: center; max-width: 45%; }
+        .player-name { font-size: 11px; color: #999; margin-bottom: 4px; width: 100%; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
         .word-bubble { 
-            padding: 10px 16px; border-radius: 18px; text-align: center; font-size: 14px; 
+            padding: 10px 16px; border-radius: 18px; text-align: center; font-size: 14px; width: 100%; box-sizing: border-box;
             color: var(--text-main); word-break: break-all; box-shadow: 0 4px 12px rgba(0,0,0,0.03); 
         }
         .word-a { background-color: #FFFFFF; border: 1px solid #FFE4EC; color: #D87A94; }
@@ -68,7 +71,7 @@
         .word-c { background-color: #FFFFFF; border: 1px solid #E4F0FF; color: #7A94D8; }
         .word-d { background-color: #FFFFFF; border: 1px solid #E9FFE4; color: #7AD886; }
         .word-e { background-color: #FFFFFF; border: 1px solid #FFF3E4; color: #D8B07A; }
-        .vs-mark { font-size: 14px; color: #D0D0D0; }
+        .vs-mark { font-size: 14px; color: #D0D0D0; align-self: center; margin-top: 15px;}
 
         /* 选项弹窗遮罩 */
         .mode-overlay {
@@ -93,8 +96,7 @@
             flex: 1; min-width: 40%; padding: 14px 0; font-size: 15px; border-radius: 16px; 
             background: rgba(247, 168, 184, 0.1); color: var(--primary-pink);
             border: 1px solid rgba(247, 168, 184, 0.3); font-weight: 700; cursor: pointer;
-            transition: all 0.2s ease; margin-bottom: 0;
-            box-shadow: none;
+            transition: all 0.2s ease; margin-bottom: 0; box-shadow: none;
         }
         .mode-btn:hover, .mode-btn:active { background: var(--primary-pink); color: white; transform: scale(0.95); }
 
@@ -119,10 +121,13 @@
         .result-title { font-size: 18px; font-weight: 800; margin: 0 0 20px 0; line-height: 1.4; color: #8E7AA8; }
         .result-box.close .result-title { color: #D87A94; }
 
-        .result-words { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;}
+        .result-words { display: flex; justify-content: center; align-items: flex-start; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;}
+        .result-word-group { display: flex; flex-direction: column; align-items: center; max-width: 45%;}
+        .result-word-name { font-size: 11px; color: #999; margin-bottom: 4px; text-align: center;}
         .result-word {
             background: white; padding: 10px 15px; border-radius: 12px; font-weight: bold; font-size: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #E8DEFF;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #E8DEFF; width: 100%; box-sizing: border-box; text-align: center;
+            word-break: break-all;
         }
         .result-box.close .result-word { border-color: #FFE4EC; }
 
@@ -140,7 +145,6 @@
             <p>看看你们的脑回路是否一致</p>
             <input type="text" id="nickname" placeholder="输入你的昵称" maxlength="10">
             
-            <!-- 去掉了下拉框，改成了按钮触发弹窗 -->
             <button onclick="showModeSelection()">创建新房间</button>
             <button onclick="showJoinView()" class="btn-secondary">加入房间</button>
         </div>
@@ -175,8 +179,9 @@
 
         <div id="view-poster" class="hidden">
             <div class="poster">
-                <h2 class="poster-title" style="color: var(--primary-pink); margin-bottom: 20px; font-weight: 800; text-align: center; font-size: 22px;">
-                    天呐！有人想到了一起！
+                <!-- 这里显示猜中的人的名字 -->
+                <h2 class="poster-title" style="color: var(--primary-pink); margin-bottom: 20px; font-weight: 800; text-align: center; font-size: 20px;">
+                    <span id="poster-winners">某人 和 某人</span> 想到了一起！
                 </h2>
                 
                 <div class="final-word-box" style="background: rgba(255,255,255,0.7); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); padding: 24px; border-radius: 22px; box-shadow: 0 8px 32px rgba(247,168,184,0.15); margin-bottom: 30px; border: 1px solid rgba(255,255,255,0.8); text-align: center;">
@@ -288,7 +293,6 @@
             hideModeSelection();
             try {
                 await ensureAuth();
-                // 借用 p_name 传模式进去，比如 "鳕鱼_3" 代表3人房
                 const { data, error } = await supabaseClient.rpc('create_game', { p_name: myName + "_" + mode });
                 if (error) throw error;
                 currentRoomCode = data.room_code;
@@ -354,6 +358,17 @@
             return { text: getRandomTip('far'), isClose: false };
         }
 
+        // 核心助手：从历史记录中提取所有人的词（带名字和颜色）
+        function extractWordsArray(roundData, data, forPoster = false) {
+            let wordsArray = [];
+            if(roundData.player_a_word) wordsArray.push({name: data.player_a_name, word: roundData.player_a_word, color: 'word-a'});
+            if(roundData.player_b_word) wordsArray.push({name: data.player_b_name, word: roundData.player_b_word, color: 'word-b'});
+            if(roundData.player_c_word) wordsArray.push({name: data.player_c_name, word: roundData.player_c_word, color: 'word-c'});
+            if(roundData.player_d_word) wordsArray.push({name: data.player_d_name, word: roundData.player_d_word, color: 'word-d'});
+            if(roundData.player_e_word) wordsArray.push({name: data.player_e_name, word: roundData.player_e_word, color: 'word-e'});
+            return wordsArray;
+        }
+
         async function checkRoomState() {
             if(!currentRoomCode || isTransitioning) return;
 
@@ -386,7 +401,7 @@
                     
                     if (data.history && data.history.length > 0) {
                         historyArea.classList.remove('hidden');
-                        renderHistory(data.history);
+                        renderHistory(data.history, data);
                     } else {
                         historyArea.classList.add('hidden');
                     }
@@ -398,7 +413,6 @@
                         spectatorArea.classList.add('hidden');
                     }
                     
-                    // 判定当前在房间内的人是否都交了
                     let allSubmitted = true;
                     if (data.player_a_name) allSubmitted = allSubmitted && data.has_a_submitted;
                     if (data.player_b_name) allSubmitted = allSubmitted && data.has_b_submitted;
@@ -417,18 +431,12 @@
                             overlay.classList.remove('hidden'); 
                             
                             const lastRound = data.history[0];
-                            
-                            let wordsArray = [];
-                            if(lastRound.player_a_word) wordsArray.push({name: data.player_a_name, word: lastRound.player_a_word, color: 'word-a'});
-                            if(lastRound.player_b_word) wordsArray.push({name: data.player_b_name, word: lastRound.player_b_word, color: 'word-b'});
-                            if(lastRound.player_c_word) wordsArray.push({name: data.player_c_name, word: lastRound.player_c_word, color: 'word-c'});
-                            if(lastRound.player_d_word) wordsArray.push({name: data.player_d_name, word: lastRound.player_d_word, color: 'word-d'});
-                            if(lastRound.player_e_word) wordsArray.push({name: data.player_e_name, word: lastRound.player_e_word, color: 'word-e'});
+                            const wordsArray = extractWordsArray(lastRound, data, false);
 
                             const container = document.getElementById('round-result-words-container');
                             container.innerHTML = '';
                             wordsArray.forEach(item => {
-                                container.innerHTML += `<div class="result-word ${item.color}" style="display:flex; flex-direction:column; align-items:center;"><span style="font-size:10px; color:#999;">${item.name}</span>${item.word}</div>`;
+                                container.innerHTML += `<div class="result-word-group"><div class="result-word-name">${item.name}</div><div class="result-word ${item.color}">${item.word}</div></div>`;
                             });
 
                             const result = getSimilarityText(wordsArray[0]?.word, wordsArray[1]?.word);
@@ -473,22 +481,21 @@
             } catch (err) { console.error("轮询出错", err); }
         }
 
-        function renderHistory(history) {
+        function renderHistory(history, data) {
             const listEl = document.getElementById('history-list');
             listEl.innerHTML = '';
             const sortedHistory = [...history].sort((a, b) => b.round_number - a.round_number);
             sortedHistory.forEach(item => {
                 const div = document.createElement('div');
                 div.className = `history-item`;
+                const wordsArray = extractWordsArray(item, data, false);
                 
                 let html = '';
-                if(item.player_a_word) html += `<div class="word-bubble word-a">${item.player_a_word}</div> <span class="vs-mark">×</span> `;
-                if(item.player_b_word) html += `<div class="word-bubble word-b">${item.player_b_word}</div> <span class="vs-mark">×</span> `;
-                if(item.player_c_word) html += `<div class="word-bubble word-c">${item.player_c_word}</div> <span class="vs-mark">×</span> `;
-                if(item.player_d_word) html += `<div class="word-bubble word-d">${item.player_d_word}</div> <span class="vs-mark">×</span> `;
-                if(item.player_e_word) html += `<div class="word-bubble word-e">${item.player_e_word}</div> <span class="vs-mark">×</span> `;
+                wordsArray.forEach((w, index) => {
+                    html += `<div class="word-group"><div class="player-name">${w.name}</div><div class="word-bubble ${w.color}">${w.word}</div></div>`;
+                    if (index < wordsArray.length - 1) html += `<div class="vs-mark">×</div>`;
+                });
                 
-                html = html.replace(/<span class="vs-mark">×<\/span>\s*$/, '');
                 div.innerHTML = html;
                 listEl.appendChild(div);
             });
@@ -497,6 +504,27 @@
         function renderPoster(data) {
             document.getElementById('poster-final-word').innerText = data.player_a_word;
 
+            // 抓出猜中的人
+            let winnerNames = [];
+            let allSame = true; // 是否全员答对
+            let firstWord = data.player_a_word;
+            
+            if(data.player_a_word) winnerNames.push(data.player_a_name);
+            if(data.player_b_word === firstWord) winnerNames.push(data.player_b_name); else allSame = false;
+            if(data.player_c_word === firstWord) winnerNames.push(data.player_c_name); else if(data.player_c_word) allSame = false;
+            if(data.player_d_word === firstWord) winnerNames.push(data.player_d_name); else if(data.player_d_word) allSame = false;
+            if(data.player_e_word === firstWord) winnerNames.push(data.player_e_name); else if(data.player_e_word) allSame = false;
+            
+            winnerNames = [...new Set(winnerNames)].filter(n => n);
+            const titleEl = document.querySelector('.poster-title');
+
+            // 🌟 重点：如果全员答对，且人数大于2，显示特殊夸奖
+            if (allSame && winnerNames.length > 2) {
+                titleEl.innerHTML = `天呐！全员天选之子，<br>这默契度太高了吧！`;
+            } else {
+                titleEl.innerHTML = `<span id="poster-winners">${winnerNames.join(" 和 ")}</span> 想到了一起！`;
+            }
+
             const listEl = document.getElementById('poster-history-list');
             listEl.innerHTML = '';
             const sortedHistory = [...data.history].sort((a, b) => a.round_number - b.round_number);
@@ -504,14 +532,13 @@
             sortedHistory.forEach(item => {
                 const div = document.createElement('div');
                 div.className = `history-item`;
+                const wordsArray = extractWordsArray(item, data, true);
                 
                 let html = '';
-                if(item.player_a_word) html += `<div class="word-bubble word-a">${item.player_a_word}</div> <span class="vs-mark">×</span> `;
-                if(item.player_b_word) html += `<div class="word-bubble word-b">${item.player_b_word}</div> <span class="vs-mark">×</span> `;
-                if(item.player_c_word) html += `<div class="word-bubble word-c">${item.player_c_word}</div> <span class="vs-mark">×</span> `;
-                if(item.player_d_word) html += `<div class="word-bubble word-d">${item.player_d_word}</div> <span class="vs-mark">×</span> `;
-                if(item.player_e_word) html += `<div class="word-bubble word-e">${item.player_e_word}</div> <span class="vs-mark">×</span> `;
-                html = html.replace(/<span class="vs-mark">×<\/span>\s*$/, '');
+                wordsArray.forEach((w, index) => {
+                    html += `<div class="word-group"><div class="player-name">${w.name}</div><div class="word-bubble ${w.color}">${w.word}</div></div>`;
+                    if (index < wordsArray.length - 1) html += `<div class="vs-mark">×</div>`;
+                });
 
                 div.innerHTML = html;
                 listEl.appendChild(div);
