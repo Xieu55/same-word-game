@@ -3,10 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <!-- 🛡️ 防缓存黑科技，强制浏览器拉取最新代码 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-    <meta http-equiv="Pragma" content="no-cache" />
-    <meta http-equiv="Expires" content="0" />
     
     <title>同词相遇</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -83,7 +80,6 @@
         .word-b { background-color: #FFFFFF; border: 1px solid #E8DEFF; color: #8E7AA8; border-bottom-left-radius: 6px; }
         .vs-mark { font-size: 14px; color: #D0D0D0; margin: 0 12px; }
 
-        /* 单局判定弹窗 */
         .result-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(255,255,255,0.6); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
@@ -176,7 +172,7 @@
         </div>
     </div>
 
-    <!-- 单局结算弹窗（彻底去掉了任何按钮） -->
+    <!-- 单局结算弹窗 -->
     <div id="round-result-overlay" class="result-overlay hidden">
         <div id="round-result-box" class="result-box">
             <h3 id="round-result-title" class="result-title">判定中...</h3>
@@ -294,27 +290,14 @@
 
         function getSimilarityText(wordA, wordB) {
             if (wordA === wordB) return { text: "天呐！你们想到了一起！", isClose: true };
-            
             let a = wordA.replace(/\s/g, '').toLowerCase();
             let b = wordB.replace(/\s/g, '').toLowerCase();
-
-            if (a.includes(b) || b.includes(a)) {
-                return { text: getRandomTip('close'), isClose: true };
-            }
-
+            if (a.includes(b) || b.includes(a)) return { text: getRandomTip('close'), isClose: true };
             let matchCount = 0;
-            let aChars = a.split('');
-            let bChars = b.split('');
-            aChars.forEach(char => {
-                if (bChars.includes(char)) matchCount++;
-            });
-
+            let aChars = a.split(''), bChars = b.split('');
+            aChars.forEach(char => { if (bChars.includes(char)) matchCount++; });
             let similarity = (matchCount * 2) / (aChars.length + bChars.length);
-
-            if (similarity >= 0.3) {
-                return { text: getRandomTip('close'), isClose: true };
-            }
-
+            if (similarity >= 0.3) return { text: getRandomTip('close'), isClose: true };
             return { text: getRandomTip('far'), isClose: false };
         }
 
@@ -363,11 +346,11 @@
                         
                         if (overlay.classList.contains('hidden') && !isTransitioning) {
                             isTransitioning = true;
-                            
                             overlay.classList.remove('hidden');
                             
-                            // 🔥 核心修复：直接找 round_number 最大的那一条，绝对是最新的一轮
-                            const lastRound = data.history.reduce((max, obj) => (obj.round_number > max.round_number ? obj : max), data.history[0]);
+                            // 🚀 终极修复：按回合数倒序排列，抓取最大（也就是最新）的那一条！
+                            const sortedByRound = [...data.history].sort((a, b) => b.round_number - a.round_number);
+                            const lastRound = sortedByRound[0];
                             
                             const wordA = lastRound.player_a_word;
                             const wordB = lastRound.player_b_word;
@@ -397,7 +380,6 @@
                         }
                     } else {
                         overlay.classList.add('hidden');
-                        
                         const iSubmitted = isMeA ? data.has_a_submitted : data.has_b_submitted;
                         if (iSubmitted) {
                             statusEl.innerText = "已提交，等待对方...";
@@ -414,7 +396,9 @@
         function renderHistory(history) {
             const listEl = document.getElementById('history-list');
             listEl.innerHTML = '';
-            history.forEach(item => {
+            // 历史记录倒序展示（最新的在最上面）
+            const sortedHistory = [...history].sort((a, b) => b.round_number - a.round_number);
+            sortedHistory.forEach(item => {
                 const div = document.createElement('div');
                 div.className = `history-item`;
                 div.innerHTML = `
@@ -460,21 +444,17 @@
                 if(pollInterval) clearInterval(pollInterval);
                 pollInterval = setInterval(checkRoomState, 1500);
                 document.getElementById('confetti-canvas').style.display = 'none';
-            } catch (err) {
-                alert("重开失败: " + err.message);
-            }
+            } catch (err) { alert("重开失败: " + err.message); }
         }
 
         async function submitWord() {
             const wordInput = document.getElementById('word-input');
             const word = wordInput.value.trim();
             if(!word) return alert("词语不能为空");
-            
             try {
                 const { data, error } = await supabaseClient.rpc('submit_game_word', { p_code: currentRoomCode, p_word: word });
                 if (error) throw error;
                 if (data.error) throw new Error(data.error);
-                
                 wordInput.value = '';
                 checkRoomState(); 
             } catch (err) { alert("提交失败: " + err.message); }
