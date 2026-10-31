@@ -179,8 +179,7 @@
 
         <div id="view-poster" class="hidden">
             <div class="poster">
-                <!-- 这里显示猜中的人的名字 -->
-                <h2 class="poster-title" style="color: var(--primary-pink); margin-bottom: 20px; font-weight: 800; text-align: center; font-size: 20px;">
+                <h2 class="poster-title" style="color: var(--primary-pink); margin-bottom: 20px; font-weight: 800; text-align: center; font-size: 20px; line-height: 1.5;">
                     <span id="poster-winners">某人 和 某人</span> 想到了一起！
                 </h2>
                 
@@ -358,8 +357,7 @@
             return { text: getRandomTip('far'), isClose: false };
         }
 
-        // 核心助手：从历史记录中提取所有人的词（带名字和颜色）
-        function extractWordsArray(roundData, data, forPoster = false) {
+        function extractWordsArray(roundData, data) {
             let wordsArray = [];
             if(roundData.player_a_word) wordsArray.push({name: data.player_a_name, word: roundData.player_a_word, color: 'word-a'});
             if(roundData.player_b_word) wordsArray.push({name: data.player_b_name, word: roundData.player_b_word, color: 'word-b'});
@@ -393,6 +391,14 @@
                 const historyArea = document.getElementById('history-area');
                 const overlay = document.getElementById('round-result-overlay');
 
+                // 如果发现自己是观众，强制显示吃瓜提示
+                if (myRole === 'spectator') {
+                    playArea.classList.add('hidden');
+                    spectatorArea.classList.remove('hidden');
+                } else {
+                    spectatorArea.classList.add('hidden');
+                }
+
                 if (data.status === 'waiting') {
                     statusEl.innerText = "等待玩家加入...";
                     playArea.classList.add('hidden');
@@ -404,13 +410,6 @@
                         renderHistory(data.history, data);
                     } else {
                         historyArea.classList.add('hidden');
-                    }
-
-                    if (myRole === 'spectator') {
-                        playArea.classList.add('hidden');
-                        spectatorArea.classList.remove('hidden');
-                    } else {
-                        spectatorArea.classList.add('hidden');
                     }
                     
                     let allSubmitted = true;
@@ -424,14 +423,18 @@
                     
                     if (allSubmitted && anyoneSubmitted) {
                         playArea.classList.add('hidden');
-                        statusEl.innerText = `第 ${actualRound} 轮 结算`; 
+                        if (myRole === 'spectator') {
+                            statusEl.innerText = "看戏中，这局马上结算...";
+                        } else {
+                            statusEl.innerText = `第 ${actualRound} 轮 结算`; 
+                        }
                         
                         if (overlay.classList.contains('hidden') && !isTransitioning) {
                             isTransitioning = true;
                             overlay.classList.remove('hidden'); 
                             
                             const lastRound = data.history[0];
-                            const wordsArray = extractWordsArray(lastRound, data, false);
+                            const wordsArray = extractWordsArray(lastRound, data);
 
                             const container = document.getElementById('round-result-words-container');
                             container.innerHTML = '';
@@ -475,6 +478,9 @@
                                 statusEl.innerText = `第 ${actualRound} 轮`;
                                 playArea.classList.remove('hidden');
                             }
+                        } else {
+                            // 观众专属状态提示
+                            statusEl.innerText = "吃瓜中，等待玩家提交……";
                         }
                     }
                 }
@@ -488,7 +494,7 @@
             sortedHistory.forEach(item => {
                 const div = document.createElement('div');
                 div.className = `history-item`;
-                const wordsArray = extractWordsArray(item, data, false);
+                const wordsArray = extractWordsArray(item, data);
                 
                 let html = '';
                 wordsArray.forEach((w, index) => {
@@ -504,9 +510,8 @@
         function renderPoster(data) {
             document.getElementById('poster-final-word').innerText = data.player_a_word;
 
-            // 抓出猜中的人
             let winnerNames = [];
-            let allSame = true; // 是否全员答对
+            let allSame = true;
             let firstWord = data.player_a_word;
             
             if(data.player_a_word) winnerNames.push(data.player_a_name);
@@ -518,7 +523,6 @@
             winnerNames = [...new Set(winnerNames)].filter(n => n);
             const titleEl = document.querySelector('.poster-title');
 
-            // 🌟 重点：如果全员答对，且人数大于2，显示特殊夸奖
             if (allSame && winnerNames.length > 2) {
                 titleEl.innerHTML = `天呐！全员天选之子，<br>这默契度太高了吧！`;
             } else {
@@ -532,7 +536,7 @@
             sortedHistory.forEach(item => {
                 const div = document.createElement('div');
                 div.className = `history-item`;
-                const wordsArray = extractWordsArray(item, data, true);
+                const wordsArray = extractWordsArray(item, data);
                 
                 let html = '';
                 wordsArray.forEach((w, index) => {
