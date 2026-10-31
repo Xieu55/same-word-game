@@ -79,7 +79,7 @@
         .word-b { background-color: #FFFFFF; border: 1px solid #E8DEFF; color: #8E7AA8; border-bottom-left-radius: 6px; }
         .vs-mark { font-size: 14px; color: #D0D0D0; margin: 0 12px; }
 
-        /* 判定弹窗极简平滑动画 */
+        /* 判定弹窗平滑动画 */
         .result-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(255,255,255,0.6); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
@@ -289,7 +289,6 @@
             isTransitioning = false;
             checkRoomState();
             if(pollInterval) clearInterval(pollInterval);
-            // 🚀 稍微放宽轮询频率，减轻手机压力
             pollInterval = setInterval(checkRoomState, 1200); 
         }
 
@@ -351,10 +350,10 @@
                         
                         if (overlay.classList.contains('hidden') && !isTransitioning) {
                             isTransitioning = true;
-                            overlay.classList.remove('hidden'); // 移除 hidden 类，触发淡入和缩放动画
+                            overlay.classList.remove('hidden'); 
                             
-                            // 🚀 性能优化：直接取数组最后一个元素，不需要复杂排序，速度极快
-                            const lastRound = data.history[data.history.length - 1];
+                            // 🚀 终极修复：直接取数组第一个元素，因为数据库是倒序排的，[0] 就是最新的一局！
+                            const lastRound = data.history[0];
                             
                             const wordA = lastRound.player_a_word;
                             const wordB = lastRound.player_b_word;
@@ -373,11 +372,9 @@
                                 boxEl.className = 'result-box lose';
                             }
 
-                            // 🚀 动画优化：停留 2.2 秒展示吐槽
+                            // 🚀 动画优化：先淡出，再清空数据
                             setTimeout(async () => {
-                                overlay.classList.add('hidden'); // 触发淡出动画
-                                
-                                // 再等 0.3 秒让动画播完，再去请求后台清空数据
+                                overlay.classList.add('hidden'); 
                                 setTimeout(async () => {
                                     try {
                                         await supabaseClient.rpc('next_round', { p_code: currentRoomCode });
@@ -385,7 +382,6 @@
                                     isTransitioning = false; 
                                     checkRoomState(); 
                                 }, 300);
-                                
                             }, 2200);
                         }
                     } else {
