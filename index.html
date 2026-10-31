@@ -3,6 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- 🛡️ 防缓存黑科技，强制浏览器拉取最新代码 -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    
     <title>同词相遇</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -31,14 +36,7 @@
             overflow: hidden; 
         }
 
-        .card { 
-            background-color: transparent; 
-            width: 100%; 
-            max-width: 360px; 
-            box-sizing: border-box; 
-            position: relative;
-            z-index: 10;
-        }
+        .card { background-color: transparent; width: 100%; max-width: 360px; box-sizing: border-box; position: relative; z-index: 10; }
         .hidden { display: none !important; }
 
         .room-header { text-align: center; font-size: 12px; color: #C0C0C0; margin-bottom: 24px; letter-spacing: 1px;}
@@ -178,7 +176,7 @@
         </div>
     </div>
 
-    <!-- 单局结算弹窗 -->
+    <!-- 单局结算弹窗（彻底去掉了任何按钮） -->
     <div id="round-result-overlay" class="result-overlay hidden">
         <div id="round-result-box" class="result-box">
             <h3 id="round-result-title" class="result-title">判定中...</h3>
@@ -204,20 +202,9 @@
         let playerBName = "";
         let isTransitioning = false;
 
-        // 💬 随机吐槽语料库
         const tipLibrary = {
-            close: [
-                "居然这么有默契！", 
-                "差一点点就猜中了！", 
-                "脑电波快要对上了！", 
-                "方向完全一致嘛！"
-            ],
-            far: [
-                "简直是跨服聊天呀……", 
-                "你们在同一个次元吗？", 
-                "这脑回路差了十万八千里～", 
-                "一个在南极，一个在北极。"
-            ]
+            close: ["居然这么有默契！", "差一点点就猜中了！", "脑电波快要对上了！", "方向完全一致嘛！"],
+            far: ["简直是跨服聊天呀……", "你们在同一个次元吗？", "这脑回路差了十万八千里～", "一个在南极，一个在北极。"]
         };
 
         function getRandomTip(type) {
@@ -305,7 +292,6 @@
             pollInterval = setInterval(checkRoomState, 1500); 
         }
 
-        // 🧠 核心算法：判断两个词的相似度
         function getSimilarityText(wordA, wordB) {
             if (wordA === wordB) return { text: "天呐！你们想到了一起！", isClose: true };
             
@@ -380,7 +366,9 @@
                             
                             overlay.classList.remove('hidden');
                             
-                            const lastRound = data.history[data.history.length - 1];
+                            // 🔥 核心修复：直接找 round_number 最大的那一条，绝对是最新的一轮
+                            const lastRound = data.history.reduce((max, obj) => (obj.round_number > max.round_number ? obj : max), data.history[0]);
+                            
                             const wordA = lastRound.player_a_word;
                             const wordB = lastRound.player_b_word;
                             
