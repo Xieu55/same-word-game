@@ -129,7 +129,6 @@
         }
         .result-box.close .result-word { border-color: #FFE4EC; }
 
-        .spectator-box { text-align: center; padding: 16px; background: rgba(255,255,255,0.8); border-radius: 16px; color: #B0B0B0; font-size: 14px; border: 1px dashed #FFE4EC; margin-bottom: 20px; }
         #confetti-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 999; display: none; }
     </style>
 </head>
@@ -162,10 +161,6 @@
             <div id="game-play-area" class="hidden">
                 <input type="text" id="word-input" placeholder="输入词语..." maxlength="20">
                 <button onclick="submitWord()">提交</button>
-            </div>
-
-            <div id="spectator-area" class="hidden">
-                <div class="spectator-box">你只是一个无情的吃瓜群众 🍉<br>请安静围观他们的表演</div>
             </div>
 
             <div id="history-area" class="hidden">
@@ -312,13 +307,10 @@
                 if (error) throw error;
                 
                 if (data.error) {
-                    if(data.error.includes('房间已满') || data.error.includes('房主已退出')) {
-                        myRole = "spectator";
-                        currentRoomCode = code;
-                        enterRoomView(currentRoomCode);
-                        return;
-                    }
-                    throw new Error(data.error);
+                    // 如果满员或者出错，直接弹窗提示，不再当观众
+                    errorEl.innerText = "加入失败：" + (data.error || "房间已满");
+                    errorEl.classList.remove('hidden');
+                    return;
                 }
                 
                 myRole = data.role; 
@@ -326,9 +318,8 @@
                 enterRoomView(currentRoomCode);
                 
             } catch (err) {
-                myRole = "spectator";
-                currentRoomCode = code;
-                enterRoomView(currentRoomCode);
+                errorEl.innerText = "加入失败，请重试";
+                errorEl.classList.remove('hidden');
             }
         }
 
@@ -378,23 +369,14 @@
                     document.getElementById('round-result-overlay').classList.add('hidden');
                     showView('view-poster');
                     renderPoster(data);
-                    if (myRole !== 'spectator') startConfetti(); 
+                    startConfetti(); 
                     return;
                 }
 
                 const statusEl = document.getElementById('room-status');
                 const playArea = document.getElementById('game-play-area');
-                const spectatorArea = document.getElementById('spectator-area');
                 const historyArea = document.getElementById('history-area');
                 const overlay = document.getElementById('round-result-overlay');
-
-                // 🚀 修复：只要发现是观众，立刻显示吃瓜界面
-                if (myRole === 'spectator') {
-                    playArea.classList.add('hidden');
-                    spectatorArea.classList.remove('hidden');
-                } else {
-                    spectatorArea.classList.add('hidden');
-                }
 
                 if (data.status === 'waiting') {
                     statusEl.innerText = "等待玩家加入...";
@@ -409,23 +391,18 @@
                         historyArea.classList.add('hidden');
                     }
 
-                    // 🚀 修复核心 Bug：准确判断房间里有几个人，不要瞎等没进来的人
-                    let allSubmitted = true;
-                    let anyoneSubmitted = false;
+                    // 纯粹的玩家统计，没有观众逻辑
+                    let totalPlayers = 0;
+                    let totalSubmitted = 0;
+                    if(data.player_a_name) { totalPlayers++; if(data.has_a_submitted) totalSubmitted++; }
+                    if(data.player_b_name) { totalPlayers++; if(data.has_b_submitted) totalSubmitted++; }
+                    if(data.player_c_name) { totalPlayers++; if(data.has_c_submitted) totalSubmitted++; }
+                    if(data.player_d_name) { totalPlayers++; if(data.has_d_submitted) totalSubmitted++; }
+                    if(data.player_e_name) { totalPlayers++; if(data.has_e_submitted) totalSubmitted++; }
                     
-                    if (data.player_a_name) { anyoneSubmitted = true; allSubmitted = allSubmitted && data.has_a_submitted; }
-                    if (data.player_b_name) { anyoneSubmitted = true; allSubmitted = allSubmitted && data.has_b_submitted; }
-                    if (data.player_c_name) { anyoneSubmitted = true; allSubmitted = allSubmitted && data.has_c_submitted; }
-                    if (data.player_d_name) { anyoneSubmitted = true; allSubmitted = allSubmitted && data.has_d_submitted; }
-                    if (data.player_e_name) { anyoneSubmitted = true; allSubmitted = allSubmitted && data.has_e_submitted; }
-                    
-                    if (allSubmitted && anyoneSubmitted) {
+                    if (totalPlayers > 0 && totalPlayers === totalSubmitted) {
                         playArea.classList.add('hidden');
-                        if (myRole === 'spectator') {
-                            statusEl.innerText = "看戏中，这局马上结算...";
-                        } else {
-                            statusEl.innerText = `第 ${actualRound} 轮 结算`; 
-                        }
+                        statusEl.innerText = `第 ${actualRound} 轮 结算`; 
                         
                         if (overlay.classList.contains('hidden') && !isTransitioning) {
                             isTransitioning = true;
@@ -449,11 +426,9 @@
                             setTimeout(async () => {
                                 overlay.classList.add('hidden'); 
                                 setTimeout(async () => {
-                                    if(myRole !== 'spectator') {
-                                        try {
-                                            await supabaseClient.rpc('next_round', { p_code: currentRoomCode });
-                                        } catch (e) { console.error(e); }
-                                    }
+                                    try {
+                                        await supabaseClient.rpc('next_round', { p_code: currentRoomCode });
+                                    } catch (e) { console.error(e); }
                                     isTransitioning = false; 
                                     checkRoomState(); 
                                 }, 300);
@@ -461,23 +436,19 @@
                         }
                     } else {
                         overlay.classList.add('hidden');
-                        if(myRole !== 'spectator'){
-                            let iSubmitted = false;
-                            if(myRole === 'A') iSubmitted = data.has_a_submitted;
-                            if(myRole === 'B') iSubmitted = data.has_b_submitted;
-                            if(myRole === 'C') iSubmitted = data.has_c_submitted;
-                            if(myRole === 'D') iSubmitted = data.has_d_submitted;
-                            if(myRole === 'E') iSubmitted = data.has_e_submitted;
-                            
-                            if (iSubmitted) {
-                                statusEl.innerText = "已提交，等待其他玩家...";
-                                playArea.classList.add('hidden');
-                            } else {
-                                statusEl.innerText = `第 ${actualRound} 轮`;
-                                playArea.classList.remove('hidden');
-                            }
+                        let iSubmitted = false;
+                        if(myRole === 'A') iSubmitted = data.has_a_submitted;
+                        if(myRole === 'B') iSubmitted = data.has_b_submitted;
+                        if(myRole === 'C') iSubmitted = data.has_c_submitted;
+                        if(myRole === 'D') iSubmitted = data.has_d_submitted;
+                        if(myRole === 'E') iSubmitted = data.has_e_submitted;
+                        
+                        if (iSubmitted) {
+                            statusEl.innerText = "已提交，等待其他玩家...";
+                            playArea.classList.add('hidden');
                         } else {
-                            statusEl.innerText = "吃瓜中，等待玩家提交……";
+                            statusEl.innerText = `第 ${actualRound} 轮`;
+                            playArea.classList.remove('hidden');
                         }
                     }
                 }
@@ -547,7 +518,6 @@
         }
 
         async function restartGame() {
-            if (myRole === 'spectator') { goHome(); return; }
             try {
                 const { data, error } = await supabaseClient.rpc('restart_game', { p_code: currentRoomCode });
                 if (error) throw error;
@@ -563,7 +533,6 @@
         }
 
         async function submitWord() {
-            if (myRole === 'spectator') return;
             const wordInput = document.getElementById('word-input');
             const word = wordInput.value.trim();
             if(!word) return alert("词语不能为空");
