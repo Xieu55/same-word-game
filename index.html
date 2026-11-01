@@ -392,6 +392,9 @@ let celebrating = false;
 let lastStripSig = '';
 let lastHistSig = '';
 let lastAdvancedKey = -1;
+let settleUntil = 0; // 推进后多久内不再接受服务端旧状态触发结算层
+let overlayShownAt = 0; // 结算层展示起始时间（轮询驱动推进，防定时器节流）
+let pendingAdvKey = -1;
 
 /* ================= 工具 ================= */
 // HTML 转义：昵称/词语都是用户输入，禁止直接拼进 innerHTML（防 XSS）
@@ -588,7 +591,14 @@ function judgeRound(wordsArr){
 }
 
 async function checkRoomState(){
-  if (!currentRoomCode || isTransitioning || celebrating) return;
+  if (!currentRoomCode) return;
+  // 轮询驱动推进：结算展示满 3 秒由房主推进（即使 setTimeout 被浏览器节流也不会卡死）
+  if (isTransitioning && myRole === 'A' && overlayShownAt && Date.now() - overlayShownAt >= 3000 && pendingAdvKey !== lastAdvancedKey){
+    lastAdvancedKey = pendingAdvKey;
+    advanceRound();
+    return;
+  }
+  if (isTransitioning || celebrating) return;
   try {
     const { data, error } = await supabaseClient.rpc('get_game_state', { p_code: currentRoomCode });
     if (error) throw error;
@@ -635,16 +645,20 @@ async function checkRoomState(){
     if (submittedAll){
       playArea.classList.add('hidden');
       statusEl.innerText = '本轮结算';
-      if (overlay.classList.contains('hidden') && history.length){
+      if (overlay.classList.contains('hidden') && history.length && Date.now() > settleUntil){
         isTransitioning = true;
+        overlayShownAt = Date.now();
+        pendingAdvKey = currentRound;
         overlay.classList.remove('hidden');
         renderRoundResult(history[0], data, currentRound);
         const advKey = currentRound;
         setTimeout(() => {
           if (!isTransitioning) return;
-          if (myRole === 'A'){
-            if (advKey !== lastAdvancedKey){ lastAdvancedKey = advKey; advanceRound(); }
+          if (myRole === 'A' && advKey !== lastAdvancedKey){
+            lastAdvancedKey = advKey;
+            advanceRound();
           } else {
+            // 房主已推进过（旧状态延迟重复弹出）：直接收起，避免卡死
             isTransitioning = false;
             document.getElementById('round-result-overlay').classList.add('hidden');
             checkRoomState();
@@ -671,6 +685,7 @@ async function checkRoomState(){
 async function advanceRound(){
   if (!isTransitioning) return;
   isTransitioning = false;
+  settleUntil = Date.now() + 5000; // 5 秒静默窗口，忽略服务端旧状态的重复结算触发
   document.getElementById('round-result-overlay').classList.add('hidden');
   try { await supabaseClient.rpc('next_round', { p_code: currentRoomCode }); }
   catch (e){ console.error('next_round', e); }
