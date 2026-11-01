@@ -309,7 +309,6 @@
                 await ensureAuth();
                 const { data, error } = await supabaseClient.rpc('join_game', { p_code: code, p_name: myName });
                 
-                // 🚀 修复：如果报错，必须看到具体的错误原因，不能直接吞掉
                 if (error) throw new Error(error.message);
                 if (data.error) throw new Error(data.error);
                 
@@ -574,4 +573,44 @@
             canvas.width = width;
             canvas.height = height;
 
-            const colors = ['#F7A8B
+            const colors = ['#F7A8B8', '#C5B4E3', '#FFF0F5', '#FFD1DC'];
+            let particles = [];
+
+            for (let i = 0; i < 120; i++) {
+                particles.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height - height,
+                    w: Math.random() * 8 + 4,
+                    h: Math.random() * 8 + 4,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    speedY: Math.random() * 3 + 2,
+                    speedX: (Math.random() - 0.5) * 2,
+                    rotation: Math.random() * 360,
+                    rotationSpeed: (Math.random() - 0.5) * 10
+                });
+            }
+
+            function update() {
+                ctx.clearRect(0, 0, width, height);
+                let active = false;
+                particles.forEach(p => {
+                    p.y += p.speedY;
+                    p.x += p.speedX;
+                    p.rotation += p.rotationSpeed;
+                    if (p.y < height) active = true;
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate(p.rotation * Math.PI / 180);
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+                    ctx.restore();
+                });
+                if (active && canvas.style.display !== 'none') {
+                    requestAnimationFrame(update);
+                }
+            }
+            update();
+        }
+    </script>
+</body>
+</html>
