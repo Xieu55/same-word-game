@@ -225,6 +225,12 @@
         let isTransitioning = false;
         let myRole = "A"; 
 
+        // 🚀 核心修复：专门用来把名字后面的 _2、_3 等后缀切掉
+        function cleanName(name) {
+            if (!name) return "";
+            return name.split('_')[0];
+        }
+
         const tipLibrary = {
             close: ["居然这么有默契！", "差一点点就猜中了！", "脑电波快要对上了！", "方向完全一致嘛！"],
             far: ["简直是跨服聊天呀……", "你们在同一个次元吗？", "这脑回路差了十万八千里～", "一个在南极，一个在北极。"]
@@ -344,13 +350,14 @@
             return { text: getRandomTip('far'), isClose: false };
         }
 
+        // 🚀 在提取词的时候，把名字清洗一下
         function extractWordsArray(roundData, data) {
             let wordsArray = [];
-            if(roundData.player_a_word) wordsArray.push({name: data.player_a_name, word: roundData.player_a_word, color: 'word-a'});
-            if(roundData.player_b_word) wordsArray.push({name: data.player_b_name, word: roundData.player_b_word, color: 'word-b'});
-            if(roundData.player_c_word) wordsArray.push({name: data.player_c_name, word: roundData.player_c_word, color: 'word-c'});
-            if(roundData.player_d_word) wordsArray.push({name: data.player_d_name, word: roundData.player_d_word, color: 'word-d'});
-            if(roundData.player_e_word) wordsArray.push({name: data.player_e_name, word: roundData.player_e_word, color: 'word-e'});
+            if(roundData.player_a_word) wordsArray.push({name: cleanName(data.player_a_name), word: roundData.player_a_word, color: 'word-a'});
+            if(roundData.player_b_word) wordsArray.push({name: cleanName(data.player_b_name), word: roundData.player_b_word, color: 'word-b'});
+            if(roundData.player_c_word) wordsArray.push({name: cleanName(data.player_c_name), word: roundData.player_c_word, color: 'word-c'});
+            if(roundData.player_d_word) wordsArray.push({name: cleanName(data.player_d_name), word: roundData.player_d_word, color: 'word-d'});
+            if(roundData.player_e_word) wordsArray.push({name: cleanName(data.player_e_name), word: roundData.player_e_word, color: 'word-e'});
             return wordsArray;
         }
 
@@ -458,11 +465,11 @@
             listEl.innerHTML = '';
             
             let allNames = [];
-            if(data.player_a_name) allNames.push(data.player_a_name);
-            if(data.player_b_name) allNames.push(data.player_b_name);
-            if(data.player_c_name) allNames.push(data.player_c_name);
-            if(data.player_d_name) allNames.push(data.player_d_name);
-            if(data.player_e_name) allNames.push(data.player_e_name);
+            if(data.player_a_name) allNames.push(cleanName(data.player_a_name));
+            if(data.player_b_name) allNames.push(cleanName(data.player_b_name));
+            if(data.player_c_name) allNames.push(cleanName(data.player_c_name));
+            if(data.player_d_name) allNames.push(cleanName(data.player_d_name));
+            if(data.player_e_name) allNames.push(cleanName(data.player_e_name));
             
             const isMultiplayer = allNames.length > 2;
             
@@ -502,11 +509,12 @@
             let allSame = true;
             let firstWord = data.player_a_word;
             
-            if(data.player_a_word) winnerNames.push(data.player_a_name);
-            if(data.player_b_word === firstWord) winnerNames.push(data.player_b_name); else allSame = false;
-            if(data.player_c_word === firstWord) winnerNames.push(data.player_c_name); else if(data.player_c_word) allSame = false;
-            if(data.player_d_word === firstWord) winnerNames.push(data.player_d_name); else if(data.player_d_word) allSame = false;
-            if(data.player_e_word === firstWord) winnerNames.push(data.player_e_name); else if(data.player_e_word) allSame = false;
+            // 🚀 在大结局也清洗名字
+            if(data.player_a_word) winnerNames.push(cleanName(data.player_a_name));
+            if(data.player_b_word === firstWord) winnerNames.push(cleanName(data.player_b_name)); else allSame = false;
+            if(data.player_c_word === firstWord) winnerNames.push(cleanName(data.player_c_name)); else if(data.player_c_word) allSame = false;
+            if(data.player_d_word === firstWord) winnerNames.push(cleanName(data.player_d_name)); else if(data.player_d_word) allSame = false;
+            if(data.player_e_word === firstWord) winnerNames.push(cleanName(data.player_e_name)); else if(data.player_e_word) allSame = false;
             
             winnerNames = [...new Set(winnerNames)].filter(n => n);
             const titleEl = document.querySelector('.poster-title');
