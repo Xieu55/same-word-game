@@ -57,14 +57,10 @@
         @keyframes breathe { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
 
         .history-container { margin-top: 10px; overflow-y: auto; padding-bottom: 10px; }
-        .history-header { text-align: center; font-size: 12px; color: #C0C0C0; margin-bottom: 16px; letter-spacing: 1px; }
-        .history-item { display: flex; align-items: center; justify-content: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;}
-
-        .player-name { font-size: 11px; color: #999; margin-bottom: 4px; width: 100%; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
-        .word-group { display: flex; flex-direction: column; align-items: center; max-width: 45%; }
+        .history-item { display: flex; align-items: center; justify-content: center; margin-bottom: 16px; gap: 10px;}
 
         .word-bubble { 
-            padding: 10px 16px; border-radius: 18px; text-align: center; font-size: 14px; width: 100%; box-sizing: border-box;
+            padding: 10px 16px; border-radius: 18px; text-align: center; font-size: 14px; 
             color: var(--text-main); word-break: break-all; box-shadow: 0 4px 12px rgba(0,0,0,0.03); 
         }
         .word-a { background-color: #FFFFFF; border: 1px solid #FFE4EC; color: #D87A94; }
@@ -72,7 +68,7 @@
         .word-c { background-color: #FFFFFF; border: 1px solid #E4F0FF; color: #7A94D8; }
         .word-d { background-color: #FFFFFF; border: 1px solid #E9FFE4; color: #7AD886; }
         .word-e { background-color: #FFFFFF; border: 1px solid #FFF3E4; color: #D8B07A; }
-        .vs-mark { font-size: 14px; color: #D0D0D0; margin: 0 4px;}
+        .vs-mark { font-size: 14px; color: #D0D0D0; }
 
         .mode-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -121,13 +117,10 @@
         .result-title { font-size: 18px; font-weight: 800; margin: 0 0 20px 0; line-height: 1.4; color: #8E7AA8; }
         .result-box.close .result-title { color: #D87A94; }
 
-        .result-words { display: flex; justify-content: center; align-items: flex-start; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;}
-        .result-word-group { display: flex; flex-direction: column; align-items: center; max-width: 45%;}
-        .result-word-name { font-size: 11px; color: #999; margin-bottom: 4px; text-align: center;}
+        .result-words { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;}
         .result-word {
             background: white; padding: 10px 15px; border-radius: 12px; font-weight: bold; font-size: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #E8DEFF; width: 100%; box-sizing: border-box; text-align: center;
-            word-break: break-all;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #E8DEFF;
         }
         .result-box.close .result-word { border-color: #FFE4EC; }
 
@@ -166,7 +159,6 @@
             </div>
 
             <div id="history-area" class="hidden">
-                <div class="history-header" id="history-header-names">对局记录</div>
                 <div class="history-container" id="history-list" style="max-height: 280px;"></div>
             </div>
             
@@ -224,12 +216,6 @@
         let myName = "";
         let isTransitioning = false;
         let myRole = "A"; 
-
-        // 🚀 核心修复：专门用来把名字后面的 _2、_3 等后缀切掉
-        function cleanName(name) {
-            if (!name) return "";
-            return name.split('_')[0];
-        }
 
         const tipLibrary = {
             close: ["居然这么有默契！", "差一点点就猜中了！", "脑电波快要对上了！", "方向完全一致嘛！"],
@@ -350,17 +336,6 @@
             return { text: getRandomTip('far'), isClose: false };
         }
 
-        // 🚀 在提取词的时候，把名字清洗一下
-        function extractWordsArray(roundData, data) {
-            let wordsArray = [];
-            if(roundData.player_a_word) wordsArray.push({name: cleanName(data.player_a_name), word: roundData.player_a_word, color: 'word-a'});
-            if(roundData.player_b_word) wordsArray.push({name: cleanName(data.player_b_name), word: roundData.player_b_word, color: 'word-b'});
-            if(roundData.player_c_word) wordsArray.push({name: cleanName(data.player_c_name), word: roundData.player_c_word, color: 'word-c'});
-            if(roundData.player_d_word) wordsArray.push({name: cleanName(data.player_d_name), word: roundData.player_d_word, color: 'word-d'});
-            if(roundData.player_e_word) wordsArray.push({name: cleanName(data.player_e_name), word: roundData.player_e_word, color: 'word-e'});
-            return wordsArray;
-        }
-
         async function checkRoomState() {
             if(!currentRoomCode || isTransitioning) return;
 
@@ -397,6 +372,7 @@
                         historyArea.classList.add('hidden');
                     }
 
+                    // 🚀 纯粹的玩家统计，统计真实有名字的人
                     let totalPlayers = 0;
                     let totalSubmitted = 0;
                     if(data.player_a_name) { totalPlayers++; if(data.has_a_submitted) totalSubmitted++; }
@@ -414,15 +390,20 @@
                             overlay.classList.remove('hidden'); 
                             
                             const lastRound = data.history[0];
-                            const wordsArray = extractWordsArray(lastRound, data);
+                            let wordsArray = [];
+                            if(lastRound.player_a_word) wordsArray.push(lastRound.player_a_word);
+                            if(lastRound.player_b_word) wordsArray.push(lastRound.player_b_word);
+                            if(lastRound.player_c_word) wordsArray.push(lastRound.player_c_word);
+                            if(lastRound.player_d_word) wordsArray.push(lastRound.player_d_word);
+                            if(lastRound.player_e_word) wordsArray.push(lastRound.player_e_word);
 
                             const container = document.getElementById('round-result-words-container');
                             container.innerHTML = '';
-                            wordsArray.forEach(item => {
-                                container.innerHTML += `<div class="result-word-group"><div class="result-word-name">${item.name}</div><div class="result-word ${item.color}">${item.word}</div></div>`;
+                            wordsArray.forEach(word => {
+                                container.innerHTML += `<div class="result-word">${word}</div>`;
                             });
 
-                            const result = getSimilarityText(wordsArray[0]?.word, wordsArray[1]?.word);
+                            const result = getSimilarityText(wordsArray[0], wordsArray[1]);
                             const titleEl = document.getElementById('round-result-title');
                             const boxEl = document.getElementById('round-result-box');
                             titleEl.innerText = result.text;
@@ -463,39 +444,18 @@
         function renderHistory(history, data) {
             const listEl = document.getElementById('history-list');
             listEl.innerHTML = '';
-            
-            let allNames = [];
-            if(data.player_a_name) allNames.push(cleanName(data.player_a_name));
-            if(data.player_b_name) allNames.push(cleanName(data.player_b_name));
-            if(data.player_c_name) allNames.push(cleanName(data.player_c_name));
-            if(data.player_d_name) allNames.push(cleanName(data.player_d_name));
-            if(data.player_e_name) allNames.push(cleanName(data.player_e_name));
-            
-            const isMultiplayer = allNames.length > 2;
-            
-            if (!isMultiplayer) {
-                document.getElementById('history-header-names').classList.add('hidden');
-            } else {
-                const headerEl = document.getElementById('history-header-names');
-                headerEl.classList.remove('hidden');
-                headerEl.innerText = `👥 ${allNames.join(" · ")}`;
-            }
-
             const sortedHistory = [...history].sort((a, b) => b.round_number - a.round_number);
+            
             sortedHistory.forEach(item => {
                 const div = document.createElement('div');
                 div.className = `history-item`;
-                const wordsArray = extractWordsArray(item, data);
                 
                 let html = '';
-                wordsArray.forEach((w, index) => {
-                    if (isMultiplayer) {
-                        html += `<div class="word-group"><div class="player-name">${w.name}</div><div class="word-bubble ${w.color}">${w.word}</div></div>`;
-                    } else {
-                        html += `<div class="word-bubble ${w.color}">${w.word}</div>`;
-                    }
-                    if (index < wordsArray.length - 1) html += `<div class="vs-mark">×</div>`;
-                });
+                if(item.player_a_word) html += `<div class="word-bubble word-a">${item.player_a_word}</div>`;
+                if(item.player_b_word) html += `<div class="word-bubble word-b">${item.player_b_word}</div>`;
+                if(item.player_c_word) html += `<div class="word-bubble word-c">${item.player_c_word}</div>`;
+                if(item.player_d_word) html += `<div class="word-bubble word-d">${item.player_d_word}</div>`;
+                if(item.player_e_word) html += `<div class="word-bubble word-e">${item.player_e_word}</div>`;
                 
                 div.innerHTML = html;
                 listEl.appendChild(div);
@@ -505,16 +465,22 @@
         function renderPoster(data) {
             document.getElementById('poster-final-word').innerText = data.player_a_word;
 
+            // 取真实名字（去掉后面的 _2 等后缀）
+            const nameA = data.player_a_name ? data.player_a_name.split('_')[0] : "";
+            const nameB = data.player_b_name ? data.player_b_name.split('_')[0] : "";
+            const nameC = data.player_c_name ? data.player_c_name.split('_')[0] : "";
+            const nameD = data.player_d_name ? data.player_d_name.split('_')[0] : "";
+            const nameE = data.player_e_name ? data.player_e_name.split('_')[0] : "";
+            
             let winnerNames = [];
             let allSame = true;
             let firstWord = data.player_a_word;
             
-            // 🚀 在大结局也清洗名字
-            if(data.player_a_word) winnerNames.push(cleanName(data.player_a_name));
-            if(data.player_b_word === firstWord) winnerNames.push(cleanName(data.player_b_name)); else allSame = false;
-            if(data.player_c_word === firstWord) winnerNames.push(cleanName(data.player_c_name)); else if(data.player_c_word) allSame = false;
-            if(data.player_d_word === firstWord) winnerNames.push(cleanName(data.player_d_name)); else if(data.player_d_word) allSame = false;
-            if(data.player_e_word === firstWord) winnerNames.push(cleanName(data.player_e_name)); else if(data.player_e_word) allSame = false;
+            if(data.player_a_word) winnerNames.push(nameA);
+            if(data.player_b_word === firstWord) winnerNames.push(nameB); else allSame = false;
+            if(data.player_c_word === firstWord) winnerNames.push(nameC); else if(data.player_c_word) allSame = false;
+            if(data.player_d_word === firstWord) winnerNames.push(nameD); else if(data.player_d_word) allSame = false;
+            if(data.player_e_word === firstWord) winnerNames.push(nameE); else if(data.player_e_word) allSame = false;
             
             winnerNames = [...new Set(winnerNames)].filter(n => n);
             const titleEl = document.querySelector('.poster-title');
@@ -532,13 +498,13 @@
             sortedHistory.forEach(item => {
                 const div = document.createElement('div');
                 div.className = `history-item`;
-                const wordsArray = extractWordsArray(item, data);
                 
                 let html = '';
-                wordsArray.forEach((w, index) => {
-                    html += `<div class="word-group"><div class="player-name">${w.name}</div><div class="word-bubble ${w.color}">${w.word}</div></div>`;
-                    if (index < wordsArray.length - 1) html += `<div class="vs-mark">×</div>`;
-                });
+                if(item.player_a_word) html += `<div class="word-bubble word-a">${item.player_a_word}</div>`;
+                if(item.player_b_word) html += `<div class="word-bubble word-b">${item.player_b_word}</div>`;
+                if(item.player_c_word) html += `<div class="word-bubble word-c">${item.player_c_word}</div>`;
+                if(item.player_d_word) html += `<div class="word-bubble word-d">${item.player_d_word}</div>`;
+                if(item.player_e_word) html += `<div class="word-bubble word-e">${item.player_e_word}</div>`;
 
                 div.innerHTML = html;
                 listEl.appendChild(div);
