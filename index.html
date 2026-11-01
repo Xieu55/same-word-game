@@ -59,7 +59,6 @@
         .history-container { margin-top: 10px; overflow-y: auto; padding-bottom: 10px; }
         .history-item { display: flex; align-items: flex-start; justify-content: center; margin-bottom: 20px; flex-wrap: wrap; gap: 6px;}
 
-        /* 带名字的词语气泡组 */
         .word-group { display: flex; flex-direction: column; align-items: center; max-width: 45%; }
         .player-name { font-size: 11px; color: #999; margin-bottom: 4px; width: 100%; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
         .word-bubble { 
@@ -73,7 +72,6 @@
         .word-e { background-color: #FFFFFF; border: 1px solid #FFF3E4; color: #D8B07A; }
         .vs-mark { font-size: 14px; color: #D0D0D0; align-self: center; margin-top: 15px;}
 
-        /* 选项弹窗遮罩 */
         .mode-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(255,255,255,0.6); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
@@ -196,7 +194,6 @@
         </div>
     </div>
 
-    <!-- 选择人数弹窗 -->
     <div id="mode-overlay" class="mode-overlay hidden">
         <div class="mode-box">
             <h3 class="mode-title">请选择游戏人数</h3>
@@ -391,7 +388,7 @@
                 const historyArea = document.getElementById('history-area');
                 const overlay = document.getElementById('round-result-overlay');
 
-                // 如果发现自己是观众，强制显示吃瓜提示
+                // 🚀 修复：只要发现是观众，立刻显示吃瓜界面
                 if (myRole === 'spectator') {
                     playArea.classList.add('hidden');
                     spectatorArea.classList.remove('hidden');
@@ -411,15 +408,16 @@
                     } else {
                         historyArea.classList.add('hidden');
                     }
-                    
+
+                    // 🚀 修复核心 Bug：准确判断房间里有几个人，不要瞎等没进来的人
                     let allSubmitted = true;
-                    if (data.player_a_name) allSubmitted = allSubmitted && data.has_a_submitted;
-                    if (data.player_b_name) allSubmitted = allSubmitted && data.has_b_submitted;
-                    if (data.player_c_name) allSubmitted = allSubmitted && data.has_c_submitted;
-                    if (data.player_d_name) allSubmitted = allSubmitted && data.has_d_submitted;
-                    if (data.player_e_name) allSubmitted = allSubmitted && data.has_e_submitted;
+                    let anyoneSubmitted = false;
                     
-                    let anyoneSubmitted = data.has_a_submitted || data.has_b_submitted || data.has_c_submitted || data.has_d_submitted || data.has_e_submitted;
+                    if (data.player_a_name) { anyoneSubmitted = true; allSubmitted = allSubmitted && data.has_a_submitted; }
+                    if (data.player_b_name) { anyoneSubmitted = true; allSubmitted = allSubmitted && data.has_b_submitted; }
+                    if (data.player_c_name) { anyoneSubmitted = true; allSubmitted = allSubmitted && data.has_c_submitted; }
+                    if (data.player_d_name) { anyoneSubmitted = true; allSubmitted = allSubmitted && data.has_d_submitted; }
+                    if (data.player_e_name) { anyoneSubmitted = true; allSubmitted = allSubmitted && data.has_e_submitted; }
                     
                     if (allSubmitted && anyoneSubmitted) {
                         playArea.classList.add('hidden');
@@ -479,7 +477,6 @@
                                 playArea.classList.remove('hidden');
                             }
                         } else {
-                            // 观众专属状态提示
                             statusEl.innerText = "吃瓜中，等待玩家提交……";
                         }
                     }
