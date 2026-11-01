@@ -1,590 +1,836 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-    <title>同词相遇</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        :root {
-            --bg-color: #FFF5F7;        
-            --text-main: #4A4A4A;       
-            --text-muted: #A0A0A0;
-            --primary-pink: #F7A8B8;    
-            --primary-purple: #C5B4E3;  
-            --radius: 22px;
-        }
-        
-        body {
-            background-color: var(--bg-color);
-            background-image: linear-gradient(135deg, #FFF5F7 0%, #F8F4FF 100%);
-            color: var(--text-main);
-            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", Roboto, sans-serif;
-            margin: 0; display: flex; justify-content: center; align-items: center;
-            min-height: 100vh; padding: 20px; overflow-y: auto; 
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>同词相遇</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23DDA3B3' d='M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'/%3E%3C/svg%3E">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+/* ===== 设计令牌 ===== */
+:root{
+  --ink:#4A4453;
+  --muted:#A29AAE;
+  --faint:#C9C2D4;
+  --pink:#DDA3B3;
+  --pink-deep:#C98C9F;
+  --pink-soft:#F7E4E9;
+  --lav:#A79BC6;
+  --lav-soft:#EFEBF6;
+  --gold:#DFB98A;
+  --gold-soft:#F8EFE2;
+  --card:rgba(255,255,255,.72);
+  --line:rgba(255,255,255,.92);
+  --shadow:0 16px 40px rgba(206,150,166,.13);
+  --r-lg:24px; --r-md:16px; --r-sm:12px;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+html,body{margin:0; padding:0}
+body{
+  min-height:100vh;
+  background:
+    radial-gradient(1200px 700px at 85% -10%, #F5E7EC 0%, rgba(245,231,236,0) 60%),
+    radial-gradient(1000px 640px at -10% 110%, #EEE9F5 0%, rgba(238,233,245,0) 60%),
+    #FBF8FA;
+  color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","HarmonyOS Sans SC","Microsoft YaHei","Segoe UI",sans-serif;
+  display:flex; justify-content:center; align-items:flex-start;
+  padding:28px 16px 48px; overflow-y:auto;
+}
+/* 背景光晕（装饰层） */
+.bg-orb{position:fixed; border-radius:50%; filter:blur(56px); opacity:.55; pointer-events:none; z-index:0}
+.orb-1{width:280px; height:280px; background:#F1DCE3; top:-80px; right:-60px}
+.orb-2{width:240px; height:240px; background:#E5DFF0; bottom:-70px; left:-50px}
 
-        .card { background-color: transparent; width: 100%; max-width: 360px; box-sizing: border-box; position: relative; z-index: 10; }
-        .hidden { display: none !important; }
+.stage{position:relative; z-index:1; width:100%; max-width:400px}
+.view{display:flex; flex-direction:column; animation:rise .42s cubic-bezier(.22,.9,.32,1) both}
+@keyframes rise{from{opacity:0; transform:translateY(14px)} to{opacity:1; transform:none}}
+.hidden{display:none !important}
 
-        .room-header { text-align: center; font-size: 12px; color: #C0C0C0; margin-bottom: 24px; letter-spacing: 1px;}
-        .room-header b { color: #999; margin-left: 4px; }
+/* ===== 首页 ===== */
+.logo-mark{
+  width:60px; height:60px; margin:0 auto 18px; border-radius:20px;
+  background:linear-gradient(135deg,#E0A0B3 0%, #A195C2 100%);
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 12px 28px rgba(206,150,166,.32);
+}
+.logo-mark svg{width:30px; height:30px}
+h1{
+  margin:0 0 6px; text-align:center; font-size:32px; font-weight:800; letter-spacing:4px;
+  background:linear-gradient(100deg,var(--pink-deep) 0%, #B3A8CE 55%, var(--lav) 100%);
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:var(--pink-deep);
+}
+.sub{ margin:0 0 30px; text-align:center; font-size:13.5px; color:var(--muted); letter-spacing:1px}
+.hint-chips{display:flex; justify-content:center; gap:8px; margin:0 0 26px; flex-wrap:wrap}
+.chip{
+  font-size:11.5px; color:var(--lav); background:rgba(167,155,198,.09);
+  border:1px solid rgba(167,155,198,.22); padding:5px 10px; border-radius:999px; letter-spacing:.5px;
+}
 
-        h2 { text-align: center; font-size: 24px; color: var(--text-main); margin: 0 0 8px 0; font-weight: 600;}
-        p { text-align: center; font-size: 13px; color: var(--text-muted); margin-bottom: 32px; }
+.field{width:100%; margin-bottom:14px}
+input.field-input{
+  width:100%; height:52px; padding:0 16px; border-radius:var(--r-md); font-size:16px;
+  border:1.5px solid transparent; outline:none; color:var(--ink); background:var(--card);
+  box-shadow:var(--shadow); text-align:center; transition:border-color .2s, background .2s;
+}
+input.field-input::placeholder{color:#C7C0D2}
+input.field-input:focus{border-color:var(--pink); background:rgba(255,255,255,.92)}
+input.code-input{font-size:24px; letter-spacing:10px; font-weight:700; color:var(--pink-deep)}
 
-        input {
-            width: 100%; padding: 16px; border-radius: var(--radius); border: 1px solid rgba(255,255,255,0.8);
-            background-color: rgba(255, 255, 255, 0.6); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-            font-size: 15px; box-sizing: border-box; margin-bottom: 16px; outline: none; text-align: center; 
-            color: var(--text-main); box-shadow: 0 8px 32px rgba(247, 168, 184, 0.1); transition: all 0.3s ease;
-        }
-        input:focus { border-color: var(--primary-pink); background-color: rgba(255, 255, 255, 0.9); }
-        input::placeholder { color: #D0D0D0; }
+/* ===== 按钮 ===== */
+.btn{
+  width:100%; height:52px; border:none; border-radius:var(--r-md); font-size:16px; font-weight:700;
+  letter-spacing:1px; cursor:pointer; font-family:inherit;
+  transition:transform .16s cubic-bezier(.2,.9,.3,1.2), box-shadow .2s, opacity .2s, background .2s;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+}
+.btn:active{transform:scale(.965) translateY(1px)}
+.btn:disabled{opacity:.55; cursor:default; transform:none}
+.btn-primary{
+  background:linear-gradient(135deg,var(--pink) 0%, #B6A9CE 60%, var(--lav) 100%);
+  color:#fff; box-shadow:0 10px 24px rgba(206,150,166,.34);
+}
+.btn-primary:not(:disabled):hover{box-shadow:0 14px 30px rgba(206,150,166,.42); transform:translateY(-1px)}
+.btn-ghost{
+  height:46px; background:transparent; color:var(--muted); font-weight:600; font-size:14.5px;
+}
+.btn-ghost:not(:disabled):hover{color:var(--ink); background:rgba(255,255,255,.5)}
+.btn-sm{height:40px; font-size:14px; width:auto; padding:0 22px; border-radius:999px}
+.btn-row{display:flex; flex-direction:column; gap:6px; margin-top:4px}
 
-        button {
-            background: linear-gradient(135deg, var(--primary-pink) 0%, var(--primary-purple) 100%);
-            color: white; border: none; border-radius: var(--radius); padding: 16px; font-size: 16px; 
-            font-weight: 600; letter-spacing: 1px; width: 100%; cursor: pointer; 
-            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
-            margin-bottom: 12px; box-shadow: 0 6px 20px rgba(247, 168, 184, 0.3);
-        }
-        button:active { transform: scale(0.95) translateY(2px); box-shadow: 0 2px 10px rgba(247, 168, 184, 0.2); }
-        .btn-secondary { background: transparent; color: #B0B0B0; box-shadow: none; font-size: 14px; font-weight: 500; }
+/* ===== 房间页 ===== */
+.room-top{display:flex; align-items:center; justify-content:space-between; margin-bottom:20px}
+.room-code-wrap{display:flex; align-items:center; gap:8px}
+.room-label{font-size:12px; color:var(--faint); letter-spacing:1px}
+.room-code{
+  font-size:20px; font-weight:800; letter-spacing:3px; color:var(--ink);
+  background:var(--card); border:1px solid var(--line); border-radius:12px; padding:8px 14px;
+  box-shadow:0 6px 18px rgba(206,150,166,.1); font-variant-numeric:tabular-nums;
+}
+.copy-btn{
+  width:34px; height:34px; border-radius:10px; border:1px solid var(--line); background:var(--card);
+  display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--muted);
+  transition:transform .15s, color .2s, background .2s;
+}
+.copy-btn:hover{color:var(--pink); transform:scale(1.05)}
+.copy-btn:active{transform:scale(.92)}
+.copy-btn svg{width:16px; height:16px}
+.round-badge{
+  align-self:flex-start; font-size:12px; color:#fff; font-weight:700; letter-spacing:1px;
+  background:linear-gradient(135deg,var(--pink),var(--lav)); border-radius:999px; padding:5px 12px;
+  box-shadow:0 6px 16px rgba(206,150,166,.25);
+}
+/* 玩家头像条 */
+.players-strip{display:flex; justify-content:center; align-items:center; gap:12px; margin:18px 0 6px; flex-wrap:wrap}
+.avatar{
+  width:46px; height:46px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-size:17px; font-weight:800; color:#fff; position:relative; border:3px solid #fff;
+  box-shadow:0 6px 16px rgba(0,0,0,.08); animation:pop .3s cubic-bezier(.2,.9,.3,1.4) both;
+}
+@keyframes pop{from{opacity:0; transform:scale(.5)} to{opacity:1; transform:scale(1)}}
+.av-a{background:linear-gradient(135deg,#E3A7B9,#D592AB)}
+.av-b{background:linear-gradient(135deg,#B0A4CE,#9C8FBE)}
+.av-c{background:linear-gradient(135deg,#A0BCE0,#88A7D0)}
+.av-d{background:linear-gradient(135deg,#A3CBB4,#84B69C)}
+.av-e{background:linear-gradient(135deg,#E6C493,#D4AB6E)}
+.avatar .check{
+  position:absolute; right:-3px; bottom:-3px; width:19px; height:19px; border-radius:50%;
+  background:#fff; display:flex; align-items:center; justify-content:center;
+  box-shadow:0 2px 6px rgba(0,0,0,.15); opacity:0; transform:scale(.4); transition:all .25s;
+}
+.avatar.is-sub .check{opacity:1; transform:scale(1)}
+.avatar .check svg{width:12px; height:12px}
+.players-caption{text-align:center; font-size:12.5px; color:var(--muted); margin:6px 0 20px; min-height:18px}
 
-        .status-text { text-align: center; font-size: 14px; color: var(--primary-pink); font-weight: 600; margin-bottom: 24px; min-height: 20px; animation: breathe 2s infinite ease-in-out; }
-        @keyframes breathe { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+.status-text{text-align:center; font-size:14px; color:var(--pink-deep); font-weight:700; min-height:22px; margin-bottom:16px}
+.status-wait{animation:breathe 2.2s ease-in-out infinite}
+@keyframes breathe{0%,100%{opacity:.65} 50%{opacity:1}}
 
-        .history-container { margin-top: 10px; overflow-y: auto; padding-bottom: 10px; }
-        .history-item { display: flex; align-items: center; justify-content: center; margin-bottom: 16px; gap: 10px;}
+/* 对局记录 */
+.history-head{
+  display:flex; align-items:center; justify-content:space-between; margin:8px 0 12px;
+}
+.history-head .lbl{font-size:12px; color:var(--faint); letter-spacing:2px}
+.history-head .names{font-size:11.5px; color:var(--muted); max-width:60%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.history-list{display:flex; flex-direction:column; gap:10px; max-height:270px; overflow-y:auto; padding-bottom:6px; scrollbar-width:thin}
+.round-row{
+  background:var(--card); border:1px solid var(--line); border-radius:var(--r-md);
+  box-shadow:0 8px 22px rgba(206,150,166,.09); padding:12px 14px;
+}
+.round-meta{display:flex; align-items:center; gap:8px; margin-bottom:10px}
+.round-tag{font-size:11px; font-weight:800; color:var(--pink-deep); letter-spacing:.5px}
+.match-tag{
+  font-size:10.5px; font-weight:700; color:#A97B2E; background:var(--gold-soft,#F8EFE2);
+  border:1px solid rgba(223,185,138,.55); padding:2px 8px; border-radius:999px; letter-spacing:.5px;
+}
+.words-line{display:flex; align-items:flex-start; justify-content:center; gap:8px; flex-wrap:wrap}
+.wgroup{display:flex; flex-direction:column; align-items:center; max-width:44%; gap:4px}
+.wplayer{font-size:11px; color:var(--muted); max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.wbubble{
+  width:100%; padding:9px 13px; border-radius:14px; text-align:center; font-size:14.5px; font-weight:700;
+  background:#fff; word-break:break-all; box-shadow:0 4px 10px rgba(0,0,0,.04);
+}
+.w-a{color:#C98C9F; border:1.5px solid #F3DCE4}
+.w-b{color:#9C8FBE; border:1.5px solid #E2DCF0}
+.w-c{color:#7C9CCB; border:1.5px solid #D7E2F1}
+.w-d{color:#6FA385; border:1.5px solid #DCEDE3}
+.w-e{color:#B98F4E; border:1.5px solid #F1E3C4}
+.vs{font-size:13px; color:#D8D2E2; padding-top:26px; flex-shrink:0}
 
-        .word-bubble { 
-            padding: 10px 16px; border-radius: 18px; text-align: center; font-size: 14px; 
-            color: var(--text-main); word-break: break-all; box-shadow: 0 4px 12px rgba(0,0,0,0.03); 
-        }
-        .word-a { background-color: #FFFFFF; border: 1px solid #FFE4EC; color: #D87A94; }
-        .word-b { background-color: #FFFFFF; border: 1px solid #E8DEFF; color: #8E7AA8; }
-        .word-c { background-color: #FFFFFF; border: 1px solid #E4F0FF; color: #7A94D8; }
-        .word-d { background-color: #FFFFFF; border: 1px solid #E9FFE4; color: #7AD886; }
-        .word-e { background-color: #FFFFFF; border: 1px solid #FFF3E4; color: #D8B07A; }
-        .vs-mark { font-size: 14px; color: #D0D0D0; }
+/* ===== 弹层 ===== */
+.overlay{
+  position:fixed; inset:0; z-index:60; display:flex; align-items:center; justify-content:center;
+  background:rgba(255,255,255,.55); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+  padding:20px;
+}
+.sheet{
+  width:100%; max-width:340px; background:#fff; border-radius:var(--r-lg);
+  padding:28px 22px 24px; text-align:center; box-shadow:0 24px 60px rgba(206,150,166,.3);
+  animation:sheetIn .3s cubic-bezier(.2,.9,.3,1.25) both; max-height:86vh; overflow-y:auto;
+}
+@keyframes sheetIn{from{opacity:0; transform:scale(.9) translateY(10px)} to{opacity:1; transform:none}}
+.sheet-title{margin:0 0 6px; font-size:19px; font-weight:800; line-height:1.45; color:var(--lav)}
+.sheet-sub{margin:0 0 18px; font-size:12.5px; color:var(--muted)}
+.sheet-title.t-pink{color:var(--pink-deep)}
+.mode-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:18px}
+.mode-opt{
+  padding:16px 6px; border-radius:var(--r-md); border:1.5px solid rgba(206,150,166,.28);
+  background:rgba(206,150,166,.06); cursor:pointer; font-family:inherit;
+  transition:all .18s; display:flex; flex-direction:column; gap:4px; align-items:center;
+}
+.mode-opt:hover{border-color:var(--pink); background:rgba(206,150,166,.12)}
+.mode-opt:active{transform:scale(.96)}
+.mode-opt b{font-size:17px; color:var(--pink-deep)}
+.mode-opt span{font-size:11px; color:var(--muted)}
+.mode-opt .dot{
+  width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-size:11px; font-weight:800; color:#fff;
+}
+.mode-opt .dot.d2{background:linear-gradient(135deg,#E3A7B9,#D592AB)}
+.mode-opt .dot.d3{background:linear-gradient(135deg,#B0A4CE,#9C8FBE)}
+.mode-opt .dot.d4{background:linear-gradient(135deg,#A0BCE0,#88A7D0)}
+.mode-opt .dot.d5{background:linear-gradient(135deg,#E6C493,#D4AB6E)}
 
-        .mode-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255,255,255,0.6); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
-            display: flex; justify-content: center; align-items: center; z-index: 100; 
-            transition: opacity 0.3s ease;
-        }
-        .mode-overlay.hidden { opacity: 0; pointer-events: none; display: flex !important; }
+/* 本轮结算 */
+.result-words{display:flex; align-items:flex-start; justify-content:center; gap:8px; flex-wrap:wrap; margin-bottom:6px}
+.result-words .wgroup{max-width:42%}
+.rword{width:100%; padding:10px 14px; border-radius:14px; background:#fff; border:1.5px solid #E8E2F2;
+  font-size:16px; font-weight:800; color:var(--lav); box-shadow:0 4px 12px rgba(0,0,0,.05); word-break:break-all}
+.rword.hit{
+  border-color:transparent;
+  background:linear-gradient(135deg,var(--pink) 0%, var(--lav) 100%);
+  color:#fff; box-shadow:0 8px 22px rgba(206,150,166,.4); animation:heartbeat 1s ease-in-out 1;
+}
+@keyframes heartbeat{0%,100%{transform:scale(1)} 25%{transform:scale(1.06)} 50%{transform:scale(.97)} 75%{transform:scale(1.04)}}
 
-        .mode-box {
-            background: #FFFFFF; width: 85%; max-width: 320px; border-radius: 24px; padding: 30px 20px;
-            text-align: center; box-shadow: 0 20px 50px rgba(247, 168, 184, 0.3);
-            border: 2px solid #FFF; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform: scale(1);
-        }
-        .mode-overlay.hidden .mode-box { transform: scale(0.8); }
+/* ===== 海报页 ===== */
+.trophy{width:64px; height:64px; margin:0 auto 14px; border-radius:50%;
+  background:linear-gradient(135deg,#F2E2C8, #DFB98A); display:flex; align-items:center; justify-content:center;
+  box-shadow:0 12px 26px rgba(223,185,138,.4); animation:heartbeat 1.1s ease-in-out 1}
+.trophy svg{width:32px; height:32px}
+.poster-title{margin:0 0 20px; font-size:21px; font-weight:800; line-height:1.5; text-align:center;
+  color:var(--pink-deep)}
+.final-word-box{
+  background:var(--card); border:1px solid var(--line); border-radius:var(--r-lg);
+  box-shadow:var(--shadow); padding:22px 16px; margin-bottom:24px; text-align:center;
+}
+.final-word-box .lbl{display:block; font-size:12px; color:var(--muted); letter-spacing:2px; margin-bottom:10px}
+.final-word-box b{display:block; font-size:36px; font-weight:800; letter-spacing:3px;
+  background:linear-gradient(100deg,var(--pink-deep),var(--lav)); -webkit-background-clip:text; background-clip:text;
+  -webkit-text-fill-color:transparent; color:var(--pink-deep); word-break:break-all}
+.poster-history .round-row{padding:10px 12px}
 
-        .mode-title { font-size: 18px; font-weight: 800; margin: 0 0 20px 0; color: #8E7AA8; }
-        
-        .mode-btn-group { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 20px;}
-        .mode-btn {
-            flex: 1; min-width: 40%; padding: 14px 0; font-size: 15px; border-radius: 16px; 
-            background: rgba(247, 168, 184, 0.1); color: var(--primary-pink);
-            border: 1px solid rgba(247, 168, 184, 0.3); font-weight: 700; cursor: pointer;
-            transition: all 0.2s ease; margin-bottom: 0; box-shadow: none;
-        }
-        .mode-btn:hover, .mode-btn:active { background: var(--primary-pink); color: white; transform: scale(0.95); }
+/* ===== 彩带 & Toast ===== */
+#confetti-canvas{position:fixed; inset:0; z-index:80; pointer-events:none; display:none}
+#toast{
+  position:fixed; left:50%; bottom:34px; transform:translateX(-50%) translateY(20px);
+  background:rgba(61,58,69,.92); color:#fff; font-size:13.5px; padding:10px 20px; border-radius:999px;
+  z-index:100; opacity:0; pointer-events:none; transition:all .3s cubic-bezier(.2,.9,.3,1.2);
+  max-width:82vw; text-align:center; box-shadow:0 10px 26px rgba(0,0,0,.18);
+}
+#toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
 
-        .result-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255,255,255,0.7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-            display: flex; justify-content: center; align-items: center; z-index: 100; 
-            transition: opacity 0.3s ease;
-        }
-        .result-overlay.hidden { opacity: 0; pointer-events: none; display: flex !important; }
-
-        .result-box {
-            background: #FFFFFF; width: 90%; max-width: 350px; border-radius: 24px; padding: 30px 20px;
-            text-align: center; box-shadow: 0 20px 50px rgba(247, 168, 184, 0.3);
-            border: 2px solid #FFF; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform: scale(1);
-        }
-        .result-overlay.hidden .result-box { transform: scale(0.8); }
-
-        .result-box.lose { background: linear-gradient(180deg, #FFFFFF 0%, #F5F0FA 100%); }
-        .result-box.close { background: linear-gradient(180deg, #FFFFFF 0%, #FFF0F5 100%); border-color: #FFE4EC;}
-        
-        .result-title { font-size: 18px; font-weight: 800; margin: 0 0 20px 0; line-height: 1.4; color: #8E7AA8; }
-        .result-box.close .result-title { color: #D87A94; }
-
-        .result-words { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;}
-        .result-word {
-            background: white; padding: 10px 15px; border-radius: 12px; font-weight: bold; font-size: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #E8DEFF;
-        }
-        .result-box.close .result-word { border-color: #FFE4EC; }
-
-        #confetti-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 999; display: none; }
-    </style>
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important}
+}
+</style>
 </head>
 <body>
+<div class="bg-orb orb-1" aria-hidden="true"></div>
+<div class="bg-orb orb-2" aria-hidden="true"></div>
+<canvas id="confetti-canvas" aria-hidden="true"></canvas>
 
-    <canvas id="confetti-canvas"></canvas>
-
-    <div class="card" id="app">
-        <div id="view-home">
-            <h2>同词相遇</h2>
-            <p>看看你们的脑回路是否一致</p>
-            <input type="text" id="nickname" placeholder="输入你的昵称" maxlength="10">
-            
-            <button onclick="showModeSelection()">创建新房间</button>
-            <button onclick="showJoinView()" class="btn-secondary">加入房间</button>
-        </div>
-
-        <div id="view-join" class="hidden">
-            <h2>加入房间</h2>
-            <input type="text" id="join-code" placeholder="输入4位房间号" maxlength="4" style="font-size: 24px; letter-spacing: 4px;">
-            <button onclick="joinGame()">确认加入</button>
-            <button onclick="goHome()" class="btn-secondary">返回</button>
-            <div id="join-error" style="color: #E57373; text-align: center; font-size: 13px; margin-top: 10px;" class="hidden"></div>
-        </div>
-
-        <div id="view-room" class="hidden">
-            <div class="room-header">房间号 <b id="display-room-code">0000</b></div>
-            <div id="room-status" class="status-text">等待玩家加入...</div>
-            
-            <div id="game-play-area" class="hidden">
-                <input type="text" id="word-input" placeholder="输入词语..." maxlength="20">
-                <button onclick="submitWord()">提交</button>
-            </div>
-
-            <div id="history-area" class="hidden">
-                <div class="history-container" id="history-list" style="max-height: 280px;"></div>
-            </div>
-            
-            <button onclick="goHome()" class="btn-secondary" style="margin-top: 20px;">退出房间</button>
-        </div>
-
-        <div id="view-poster" class="hidden">
-            <div class="poster">
-                <h2 class="poster-title" style="color: var(--primary-pink); margin-bottom: 20px; font-weight: 800; text-align: center; font-size: 20px; line-height: 1.5;">
-                    <span id="poster-winners">某人 和 某人</span> 想到了一起！
-                </h2>
-                
-                <div class="final-word-box" style="background: rgba(255,255,255,0.7); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); padding: 24px; border-radius: 22px; box-shadow: 0 8px 32px rgba(247,168,184,0.15); margin-bottom: 30px; border: 1px solid rgba(255,255,255,0.8); text-align: center;">
-                    <span style="display: block; font-size: 12px; color: #999; margin-bottom: 8px; letter-spacing: 1px; text-align: center;">最终相同词语</span>
-                    <b id="poster-final-word" style="display: block; text-align: center; font-size: 32px; color: var(--primary-pink); letter-spacing: 2px;">-</b>
-                </div>
-
-                <div class="history-container" id="poster-history-list" style="text-align: left; margin-bottom: 20px;"></div>
-                
-                <button onclick="restartGame()" style="margin-top: 10px;">再玩一次（房间不变）</button>
-                <button onclick="goHome()" class="btn-secondary" style="margin-top: 5px;">退回首页</button>
-            </div>
-        </div>
+<main class="stage" id="app">
+  <!-- ===== 视图：首页 ===== -->
+  <section class="view" id="view-home">
+    <div class="logo-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="#fff"/><circle cx="17.4" cy="5.8" r="2.1" fill="#fff" opacity=".85"/><circle cx="20.2" cy="9.4" r="1.3" fill="#fff" opacity=".6"/></svg>
     </div>
-
-    <div id="mode-overlay" class="mode-overlay hidden">
-        <div class="mode-box">
-            <h3 class="mode-title">请选择游戏人数</h3>
-            <div class="mode-btn-group">
-                <button class="mode-btn" onclick="createGame('2')">双人模式</button>
-                <button class="mode-btn" onclick="createGame('3')">3 人房</button>
-                <button class="mode-btn" onclick="createGame('4')">4 人房</button>
-                <button class="mode-btn" onclick="createGame('5')">5 人房</button>
-            </div>
-            <button class="btn-secondary" onclick="hideModeSelection()">取消</button>
-        </div>
+    <h1>同词相遇</h1>
+    <p class="sub">看看你们的脑回路是否一致</p>
+    <div class="hint-chips">
+      <span class="chip">各自出词</span><span class="chip">默契判定</span><span class="chip">最多 5 人</span>
     </div>
-
-    <div id="round-result-overlay" class="result-overlay hidden">
-        <div id="round-result-box" class="result-box">
-            <h3 id="round-result-title" class="result-title">判定中...</h3>
-            <div id="round-result-words-container" class="result-words"></div>
-        </div>
+    <input type="text" id="nickname" class="field-input" placeholder="输入你的昵称" maxlength="10" autocomplete="off">
+    <div class="btn-row" style="margin-top:22px">
+      <button class="btn btn-primary" id="btn-create" onclick="showModeSelection()">创建新房间</button>
+      <button class="btn btn-ghost" id="btn-join-nav" onclick="showJoinView()">加入房间</button>
     </div>
+  </section>
 
-    <script>
-        const SUPABASE_URL = 'https://wpvvgctsxgljzikrtedk.supabase.co'; 
-        const SUPABASE_ANON_KEY = 'sb_publishable_Ecr2t1v8CEUG1LwPNsLvbQ_5F0BXm2y';
-        
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  <!-- ===== 视图：加入 ===== -->
+  <section class="view hidden" id="view-join">
+    <h1 style="font-size:26px; letter-spacing:2px; margin-bottom:4px">加入房间</h1>
+    <p class="sub" style="margin-bottom:26px">输入房主分享给你的 4 位房间号</p>
+    <input type="text" id="join-code" class="field-input code-input" placeholder="0000" maxlength="4" autocomplete="off" inputmode="numeric">
+    <div class="btn-row" style="margin-top:14px">
+      <button class="btn btn-primary" id="btn-join" onclick="joinGame()">确认加入</button>
+      <button class="btn btn-ghost" onclick="goHome()">返回</button>
+    </div>
+    <p id="join-error" class="hidden" style="text-align:center; color:#E06C6C; font-size:13px; margin:14px 0 0"></p>
+  </section>
 
-        let currentUser = null;
-        let currentRoomCode = null;
-        let pollInterval = null;
-        let myName = "";
-        let isTransitioning = false;
-        let myRole = "A"; 
+  <!-- ===== 视图：房间 ===== -->
+  <section class="view hidden" id="view-room">
+    <div class="room-top">
+      <div class="room-code-wrap">
+        <span class="room-label">房间号</span>
+        <span class="room-code" id="display-room-code">0000</span>
+        <button class="copy-btn" id="copy-room-btn" aria-label="复制房间号" title="复制房间号">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        </button>
+      </div>
+      <span class="round-badge" id="round-badge">第 1 轮</span>
+    </div>
+    <div class="players-strip" id="players-strip"></div>
+    <p class="players-caption" id="players-caption"></p>
+    <p class="status-text" id="room-status" aria-live="polite"></p>
+    <div id="game-play-area" class="hidden">
+      <input type="text" id="word-input" class="field-input" placeholder="想一个词，提交后看大家的答案…" maxlength="20" autocomplete="off">
+      <button class="btn btn-primary" id="btn-submit" onclick="submitWord()" style="margin-top:12px">提交</button>
+    </div>
+    <div id="history-area" class="hidden">
+      <div class="history-head">
+        <span class="lbl">对局记录</span>
+        <span class="names" id="history-names"></span>
+      </div>
+      <div class="history-list" id="history-list"></div>
+    </div>
+    <button class="btn btn-ghost" onclick="goHome()" style="margin-top:18px">退出房间</button>
+  </section>
 
-        const tipLibrary = {
-            close: ["居然这么有默契！", "差一点点就猜中了！", "脑电波快要对上了！", "方向完全一致嘛！"],
-            far: ["简直是跨服聊天呀……", "你们在同一个次元吗？", "这脑回路差了十万八千里～", "一个在南极，一个在北极。"]
-        };
+  <!-- ===== 视图：海报 ===== -->
+  <section class="view hidden" id="view-poster">
+    <div class="trophy" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="#fff"><path d="M18 4h2a2 2 0 0 1 2 2v1a5 5 0 0 1-5 5h-.35A6 6 0 0 1 13 14.93V18h2a1 1 0 0 1 0 2h-6a1 1 0 0 1 0-2h2v-3.07A6 6 0 0 1 7.35 12H7a5 5 0 0 1-5-5V6a2 2 0 0 1 2-2h2V3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v1zM5 5H4v2a3 3 0 0 0 3 3V6a1 1 0 0 0-1-1h-1zm14 0h-1a1 1 0 0 0-1 1v4a3 3 0 0 0 3-3V5z"/></svg>
+    </div>
+    <h2 class="poster-title" id="poster-title"></h2>
+    <div class="final-word-box">
+      <span class="lbl">最终相同词语</span>
+      <b id="poster-final-word">-</b>
+    </div>
+    <div class="history-head"><span class="lbl">默契历程</span></div>
+    <div class="history-list poster-history" id="poster-history"></div>
+    <div class="btn-row" style="margin-top:20px">
+      <button class="btn btn-primary" onclick="restartGame()">再玩一次</button>
+      <button class="btn btn-ghost" onclick="goHome()">回到首页</button>
+    </div>
+  </section>
+</main>
 
-        function getRandomTip(type) {
-            const arr = tipLibrary[type];
-            return arr[Math.floor(Math.random() * arr.length)];
-        }
+<!-- ===== 弹层：选择人数 ===== -->
+<div class="overlay hidden" id="mode-overlay">
+  <div class="sheet">
+    <h3 class="sheet-title">选几个人一起玩？</h3>
+    <p class="sheet-sub">房间创建后，把房间号发给朋友们</p>
+    <div class="mode-grid">
+      <button class="mode-opt" onclick="createGame('2')"><span class="dot d2">2</span><b>双人</b><span>两个人的默契</span></button>
+      <button class="mode-opt" onclick="createGame('3')"><span class="dot d3">3</span><b>三人</b><span>三角对齐</span></button>
+      <button class="mode-opt" onclick="createGame('4')"><span class="dot d4">4</span><b>四人</b><span>小圈子测试</span></button>
+      <button class="mode-opt" onclick="createGame('5')"><span class="dot d5">5</span><b>五人</b><span>派对模式</span></button>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="hideModeSelection()">取消</button>
+  </div>
+</div>
 
-        function showView(viewId) {
-            document.querySelectorAll('.card > div').forEach(el => el.classList.add('hidden'));
-            document.getElementById(viewId).classList.remove('hidden');
-        }
+<!-- ===== 弹层：本轮结算 ===== -->
+<div class="overlay hidden" id="round-result-overlay">
+  <div class="sheet" role="dialog" aria-label="本轮结果">
+    <h3 class="sheet-title" id="round-result-title"></h3>
+    <p class="sheet-sub" id="round-result-sub"></p>
+    <div class="result-words" id="round-result-words"></div>
+    <button class="btn btn-ghost btn-sm" onclick="advanceRound()" style="margin-top:14px">下一轮</button>
+  </div>
+</div>
 
-        function showJoinView() {
-            if(!checkNickname()) return;
-            document.getElementById('join-error').classList.add('hidden');
-            showView('view-join');
-        }
+<div id="toast" role="status" aria-live="polite"></div>
 
-        function showModeSelection() {
-            if(!checkNickname()) return;
-            document.getElementById('mode-overlay').classList.remove('hidden');
-        }
+<noscript><p style="text-align:center; padding:40px 20px; color:#9A93A8">此游戏需要启用 JavaScript 才能运行。</p></noscript>
 
-        function hideModeSelection() {
-            document.getElementById('mode-overlay').classList.add('hidden');
-        }
+<script>
+/* ================= 配置（保持不变，你的 Supabase 后端契约） ================= */
+const SUPABASE_URL = 'https://wpvvgctsxgljzikrtedk.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_Ecr2t1v8CEUG1LwPNsLvbQ_5F0BXm2y';
 
-        function goHome() {
-            document.getElementById('join-error').classList.add('hidden');
-            document.getElementById('round-result-overlay').classList.add('hidden');
-            hideModeSelection();
-            showView('view-home');
-            if(pollInterval) clearInterval(pollInterval);
-            currentRoomCode = null;
-            isTransitioning = false;
-            document.getElementById('confetti-canvas').style.display = 'none';
-        }
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let currentUser = null;
+let currentRoomCode = null;
+let pollTimer = null;
+let myName = '';
+let myRole = 'A';
+let isTransitioning = false;
+let celebrating = false;
 
-        function checkNickname() {
-            const name = document.getElementById('nickname').value.trim();
-            if(!name) { alert('请先输入昵称哦'); return false; }
-            myName = name;
-            return true;
-        }
+/* ================= 工具 ================= */
+// HTML 转义：昵称/词语都是用户输入，禁止直接拼进 innerHTML（防 XSS）
+function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+// 只去掉服务端追加在房主名后的 "_2/_3" 模式后缀，昵称里的下划线保留
+function cleanName(n){ return n ? String(n).replace(/_\d+$/, '') : ''; }
+function normalize(s){ return String(s || '').replace(/\s+/g, '').toLowerCase(); }
+function wordSimilarity(a, b){
+  a = normalize(a); b = normalize(b);
+  if (a === b) return 1;
+  if (!a || !b) return 0;
+  if (a.includes(b) || b.includes(a)) return 0.8;
+  const setB = new Set(b.split(''));
+  let m = 0;
+  for (const ch of a.split('')) if (setB.has(ch)) m++;
+  return (m * 2) / (a.length + b.length);
+}
+const tipLib = {
+  close: ['差一点点就猜中了！','脑电波快要对上了！','方向完全一致嘛！','就差一毫米的默契！'],
+  far: ['简直是跨服聊天呀……','你们在同一个次元吗？','这脑回路差了十万八千里～','一个在南极，一个在北极。']
+};
+const pickTip = k => tipLib[k][Math.floor(Math.random() * tipLib[k].length)];
 
-        async function ensureAuth() {
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            if (!session) {
-                const { data, error } = await supabaseClient.auth.signInAnonymously();
-                if (error) throw new Error("登录失败: " + error.message);
-                currentUser = data.user;
-            } else {
-                currentUser = session.user;
-            }
-        }
+function toast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 2200);
+}
+function showView(id){
+  document.querySelectorAll('#app > .view').forEach(v => v.classList.add('hidden'));
+  const v = document.getElementById(id);
+  v.classList.remove('hidden');
+}
+function setLoading(btn, loading){
+  if (!btn) return;
+  btn.disabled = loading;
+}
 
-        async function createGame(mode) {
-            hideModeSelection();
-            try {
-                await ensureAuth();
-                const { data, error } = await supabaseClient.rpc('create_game', { p_name: myName + "_" + mode });
-                if (error) throw error;
-                currentRoomCode = data.room_code;
-                myRole = "A"; 
-                enterRoomView(currentRoomCode);
-            } catch (err) { alert(err.message); }
-        }
+/* ================= 流程 ================= */
+function checkNickname(){
+  const name = document.getElementById('nickname').value.trim();
+  if (!name){ toast('先给自己取个昵称吧'); return null; }
+  myName = name;
+  return name;
+}
+function showJoinView(){ if (checkNickname()) showView('view-join'); }
+function showModeSelection(){ if (checkNickname()) document.getElementById('mode-overlay').classList.remove('hidden'); }
+function hideModeSelection(){ document.getElementById('mode-overlay').classList.add('hidden'); }
 
-        async function joinGame() {
-            if(!checkNickname()) return;
-            const code = document.getElementById('join-code').value.trim();
-            const errorEl = document.getElementById('join-error');
-            if(!code || code.length !== 4) {
-                errorEl.innerText = "请输入正确的4位房间号";
-                errorEl.classList.remove('hidden');
-                return;
-            }
-            try {
-                await ensureAuth();
-                const { data, error } = await supabaseClient.rpc('join_game', { p_code: code, p_name: myName });
-                
-                if (error) throw new Error(error.message);
-                if (data.error) throw new Error(data.error);
-                
-                myRole = data.role; 
-                currentRoomCode = code;
-                enterRoomView(currentRoomCode);
-                
-            } catch (err) {
-                errorEl.innerText = err.message;
-                errorEl.classList.remove('hidden');
-            }
-        }
+function goHome(){
+  document.getElementById('round-result-overlay').classList.add('hidden');
+  hideModeSelection();
+  document.getElementById('join-error').classList.add('hidden');
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = null;
+  currentRoomCode = null;
+  isTransitioning = false;
+  celebrating = false;
+  document.getElementById('confetti-canvas').style.display = 'none';
+  showView('view-home');
+}
 
-        function enterRoomView(code) {
-            showView('view-room');
-            document.getElementById('display-room-code').innerText = code;
-            isTransitioning = false;
-            checkRoomState();
-            if(pollInterval) clearInterval(pollInterval);
-            pollInterval = setInterval(checkRoomState, 1200); 
-        }
+async function ensureAuth(){
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (session){ currentUser = session.user; return; }
+  const { data, error } = await supabaseClient.auth.signInAnonymously();
+  if (error) throw new Error('登录失败：' + error.message);
+  currentUser = data.user;
+}
 
-        function getSimilarityText(wordA, wordB) {
-            if (wordA === wordB) return { text: "天呐！想到了一起！", isClose: true };
-            let a = wordA.replace(/\s/g, '').toLowerCase();
-            let b = wordB.replace(/\s/g, '').toLowerCase();
-            if (a.includes(b) || b.includes(a)) return { text: getRandomTip('close'), isClose: true };
-            let matchCount = 0;
-            let aChars = a.split(''), bChars = b.split('');
-            aChars.forEach(char => { if (bChars.includes(char)) matchCount++; });
-            let similarity = (matchCount * 2) / (aChars.length + bChars.length);
-            if (similarity >= 0.3) return { text: getRandomTip('close'), isClose: true };
-            return { text: getRandomTip('far'), isClose: false };
-        }
+async function createGame(mode){
+  hideModeSelection();
+  const btn = document.getElementById('btn-create');
+  setLoading(btn, true);
+  try {
+    await ensureAuth();
+    const { data, error } = await supabaseClient.rpc('create_game', { p_name: myName + '_' + mode });
+    if (error) throw error;
+    currentRoomCode = data.room_code;
+    myRole = 'A';
+    enterRoomView(currentRoomCode);
+    toast('房间已创建');
+  } catch (err){
+    toast(err.message || '创建房间失败，请检查网络或后端配置');
+  } finally { setLoading(btn, false); }
+}
 
-        async function checkRoomState() {
-            if(!currentRoomCode || isTransitioning) return;
+async function joinGame(){
+  if (!checkNickname()) return;
+  const code = document.getElementById('join-code').value.trim();
+  const errEl = document.getElementById('join-error');
+  if (!/^\d{4}$/.test(code)){
+    errEl.innerText = '房间号是 4 位数字';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  const btn = document.getElementById('btn-join');
+  setLoading(btn, true);
+  try {
+    await ensureAuth();
+    const { data, error } = await supabaseClient.rpc('join_game', { p_code: code, p_name: myName });
+    if (error) throw new Error(error.message);
+    if (data && data.error) throw new Error(data.error);
+    myRole = data.role;
+    currentRoomCode = code;
+    enterRoomView(currentRoomCode);
+  } catch (err){
+    errEl.innerText = err.message;
+    errEl.classList.remove('hidden');
+  } finally { setLoading(btn, false); }
+}
 
-            try {
-                const { data, error } = await supabaseClient.rpc('get_game_state', { p_code: currentRoomCode });
-                if (error) throw error;
+function enterRoomView(code){
+  document.getElementById('display-room-code').innerText = code;
+  document.getElementById('join-error').classList.add('hidden');
+  isTransitioning = false;
+  showView('view-room');
+  checkRoomState();
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(checkRoomState, 1200);
+}
 
-                const actualRound = (data.history ? data.history.length : 0) + 1;
+/* ================= 玩家信息 ================= */
+function playerSlots(data){
+  const slots = [];
+  ['a','b','c','d','e'].forEach(k => {
+    if (data['player_' + k + '_name']){
+      slots.push({
+        role: k.toUpperCase(),
+        name: cleanName(data['player_' + k + '_name']),
+        submitted: !!data['has_' + k + '_submitted']
+      });
+    }
+  });
+  return slots;
+}
+function renderPlayers(data){
+  const strip = document.getElementById('players-strip');
+  const cap = document.getElementById('players-caption');
+  const slots = playerSlots(data);
+  if (!slots.length){ strip.innerHTML = ''; cap.textContent = ''; return; }
+  strip.innerHTML = slots.map(s => `
+    <div class="avatar av-${s.role.toLowerCase()} ${s.submitted ? 'is-sub' : ''}">
+      ${esc(s.name.slice(0, 1))}
+      <span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="#84B69C" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"/></svg></span>
+    </div>`).join('');
+  const subCount = slots.filter(s => s.submitted).length;
+  if (data.status === 'waiting') cap.textContent = `${slots.length} 人已加入`;
+  else cap.textContent = subCount === slots.length ? '全部提交，正在判定…' : `${subCount}/${slots.length} 已提交`;
+}
 
-                if (data.is_win) {
-                    if(pollInterval) clearInterval(pollInterval);
-                    document.getElementById('round-result-overlay').classList.add('hidden');
-                    showView('view-poster');
-                    renderPoster(data);
-                    startConfetti(); 
-                    return;
-                }
+/* ================= 轮询主流程 ================= */
+function extractWords(round, data){
+  const arr = [];
+  [['a','A','w-a'],['b','B','w-b'],['c','C','w-c'],['d','D','w-d'],['e','E','w-e']].forEach(([k, role, cls]) => {
+    const w = round['player_' + k + '_word'];
+    if (w != null) arr.push({ role, name: cleanName(data['player_' + k + '_name']), word: String(w), cls });
+  });
+  return arr;
+}
+// 返回 {kind:'all'|'match'|'close'|'far', winners:[name...], hitRoles:[role...]}
+function judgeRound(wordsArr){
+  if (wordsArr.length < 2) return { kind: 'wait', winners: [], hitRoles: [] };
+  const uniq = new Set(wordsArr.map(w => normalize(w.word)));
+  if (uniq.size === 1) return { kind: 'all', winners: wordsArr.map(w => w.name), hitRoles: wordsArr.map(w => w.role) };
+  const hits = new Set();
+  const winners = [];
+  for (let i = 0; i < wordsArr.length; i++){
+    for (let j = i + 1; j < wordsArr.length; j++){
+      if (normalize(wordsArr[i].word) === normalize(wordsArr[j].word)){
+        hits.add(wordsArr[i].role); hits.add(wordsArr[j].role);
+      }
+    }
+  }
+  if (hits.size){
+    wordsArr.forEach(w => { if (hits.has(w.role)) winners.push(w.name); });
+    return { kind: 'match', winners, hitRoles: [...hits] };
+  }
+  let close = false;
+  for (let i = 0; i < wordsArr.length && !close; i++)
+    for (let j = i + 1; j < wordsArr.length && !close; j++)
+      if (wordSimilarity(wordsArr[i].word, wordsArr[j].word) >= 0.3) close = true;
+  return close ? { kind: 'close', winners: [], hitRoles: [] } : { kind: 'far', winners: [], hitRoles: [] };
+}
 
-                const statusEl = document.getElementById('room-status');
-                const playArea = document.getElementById('game-play-area');
-                const historyArea = document.getElementById('history-area');
-                const overlay = document.getElementById('round-result-overlay');
+async function checkRoomState(){
+  if (!currentRoomCode || isTransitioning || celebrating) return;
+  try {
+    const { data, error } = await supabaseClient.rpc('get_game_state', { p_code: currentRoomCode });
+    if (error) throw error;
+    if (!data) return;
+    const history = Array.isArray(data.history) ? data.history : [];
 
-                if (data.status === 'waiting') {
-                    statusEl.innerText = "等待玩家加入...";
-                    playArea.classList.add('hidden');
-                    historyArea.classList.add('hidden');
-                } else if (data.status === 'playing') {
-                    
-                    if (data.history && data.history.length > 0) {
-                        historyArea.classList.remove('hidden');
-                        renderHistory(data.history, data);
-                    } else {
-                        historyArea.classList.add('hidden');
-                    }
+    // 大结局
+    if (data.is_win){
+      if (pollTimer) clearInterval(pollTimer);
+      pollTimer = null;
+      document.getElementById('round-result-overlay').classList.add('hidden');
+      showView('view-poster');
+      renderPoster(data);
+      celebrating = true;
+      startConfetti();
+      return;
+    }
 
-                    // 🚀 纯粹的玩家统计，统计真实有名字的人
-                    let totalPlayers = 0;
-                    let totalSubmitted = 0;
-                    if(data.player_a_name) { totalPlayers++; if(data.has_a_submitted) totalSubmitted++; }
-                    if(data.player_b_name) { totalPlayers++; if(data.has_b_submitted) totalSubmitted++; }
-                    if(data.player_c_name) { totalPlayers++; if(data.has_c_submitted) totalSubmitted++; }
-                    if(data.player_d_name) { totalPlayers++; if(data.has_d_submitted) totalSubmitted++; }
-                    if(data.player_e_name) { totalPlayers++; if(data.has_e_submitted) totalSubmitted++; }
-                    
-                    if (totalPlayers > 0 && totalPlayers === totalSubmitted) {
-                        playArea.classList.add('hidden');
-                        statusEl.innerText = `第 ${actualRound} 轮 结算`; 
-                        
-                        if (overlay.classList.contains('hidden') && !isTransitioning) {
-                            isTransitioning = true;
-                            overlay.classList.remove('hidden'); 
-                            
-                            const lastRound = data.history[0];
-                            let wordsArray = [];
-                            if(lastRound.player_a_word) wordsArray.push(lastRound.player_a_word);
-                            if(lastRound.player_b_word) wordsArray.push(lastRound.player_b_word);
-                            if(lastRound.player_c_word) wordsArray.push(lastRound.player_c_word);
-                            if(lastRound.player_d_word) wordsArray.push(lastRound.player_d_word);
-                            if(lastRound.player_e_word) wordsArray.push(lastRound.player_e_word);
+    const statusEl = document.getElementById('room-status');
+    const playArea = document.getElementById('game-play-area');
+    const historyArea = document.getElementById('history-area');
+    const overlay = document.getElementById('round-result-overlay');
 
-                            const container = document.getElementById('round-result-words-container');
-                            container.innerHTML = '';
-                            wordsArray.forEach(word => {
-                                container.innerHTML += `<div class="result-word">${word}</div>`;
-                            });
+    renderPlayers(data);
 
-                            const result = getSimilarityText(wordsArray[0], wordsArray[1]);
-                            const titleEl = document.getElementById('round-result-title');
-                            const boxEl = document.getElementById('round-result-box');
-                            titleEl.innerText = result.text;
-                            boxEl.className = result.isClose ? 'result-box close' : 'result-box lose';
+    if (data.status === 'waiting'){
+      statusEl.innerText = '等待玩家加入…';
+      statusEl.classList.add('status-wait');
+      playArea.classList.add('hidden');
+      historyArea.classList.add('hidden');
+      return;
+    }
 
-                            setTimeout(async () => {
-                                overlay.classList.add('hidden'); 
-                                setTimeout(async () => {
-                                    try {
-                                        await supabaseClient.rpc('next_round', { p_code: currentRoomCode });
-                                    } catch (e) { console.error(e); }
-                                    isTransitioning = false; 
-                                    checkRoomState(); 
-                                }, 300);
-                            }, 2500);
-                        }
-                    } else {
-                        overlay.classList.add('hidden');
-                        let iSubmitted = false;
-                        if(myRole === 'A') iSubmitted = data.has_a_submitted;
-                        if(myRole === 'B') iSubmitted = data.has_b_submitted;
-                        if(myRole === 'C') iSubmitted = data.has_c_submitted;
-                        if(myRole === 'D') iSubmitted = data.has_d_submitted;
-                        if(myRole === 'E') iSubmitted = data.has_e_submitted;
-                        
-                        if (iSubmitted) {
-                            statusEl.innerText = "已提交，等待其他玩家...";
-                            playArea.classList.add('hidden');
-                        } else {
-                            statusEl.innerText = `第 ${actualRound} 轮`;
-                            playArea.classList.remove('hidden');
-                        }
-                    }
-                }
-            } catch (err) { console.error("轮询出错", err); }
-        }
+    statusEl.classList.remove('status-wait');
+    const currentRound = history.length + 1;
+    document.getElementById('round-badge').innerText = '第 ' + currentRound + ' 轮';
 
-        function renderHistory(history, data) {
-            const listEl = document.getElementById('history-list');
-            listEl.innerHTML = '';
-            const sortedHistory = [...history].sort((a, b) => b.round_number - a.round_number);
-            
-            sortedHistory.forEach(item => {
-                const div = document.createElement('div');
-                div.className = `history-item`;
-                
-                let html = '';
-                if(item.player_a_word) html += `<div class="word-bubble word-a">${item.player_a_word}</div>`;
-                if(item.player_b_word) html += `<div class="word-bubble word-b">${item.player_b_word}</div>`;
-                if(item.player_c_word) html += `<div class="word-bubble word-c">${item.player_c_word}</div>`;
-                if(item.player_d_word) html += `<div class="word-bubble word-d">${item.player_d_word}</div>`;
-                if(item.player_e_word) html += `<div class="word-bubble word-e">${item.player_e_word}</div>`;
-                
-                div.innerHTML = html;
-                listEl.appendChild(div);
-            });
-        }
+    if (history.length){ historyArea.classList.remove('hidden'); renderHistory(history, data); }
+    else historyArea.classList.add('hidden');
 
-        function renderPoster(data) {
-            document.getElementById('poster-final-word').innerText = data.player_a_word;
+    const slots = playerSlots(data);
+    const submittedAll = slots.length > 0 && slots.every(s => s.submitted);
+    if (submittedAll){
+      playArea.classList.add('hidden');
+      statusEl.innerText = '本轮结算';
+      if (overlay.classList.contains('hidden') && history.length){
+        isTransitioning = true;
+        overlay.classList.remove('hidden');
+        renderRoundResult(history[0], data, currentRound);
+        setTimeout(() => { if (isTransitioning) advanceRound(); }, 3000);
+      }
+    } else {
+      overlay.classList.add('hidden');
+      const me = slots.find(s => s.role === myRole);
+      if (me && me.submitted){
+        statusEl.innerText = '已提交，等其他人…';
+        playArea.classList.add('hidden');
+      } else {
+        statusEl.innerText = '第 ' + currentRound + ' 轮，想一个词吧';
+        playArea.classList.remove('hidden');
+        document.getElementById('word-input').focus();
+      }
+    }
+  } catch (err){
+    console.error('轮询出错', err);
+  }
+}
 
-            // 取真实名字（去掉后面的 _2 等后缀）
-            const nameA = data.player_a_name ? data.player_a_name.split('_')[0] : "";
-            const nameB = data.player_b_name ? data.player_b_name.split('_')[0] : "";
-            const nameC = data.player_c_name ? data.player_c_name.split('_')[0] : "";
-            const nameD = data.player_d_name ? data.player_d_name.split('_')[0] : "";
-            const nameE = data.player_e_name ? data.player_e_name.split('_')[0] : "";
-            
-            let winnerNames = [];
-            let allSame = true;
-            let firstWord = data.player_a_word;
-            
-            if(data.player_a_word) winnerNames.push(nameA);
-            if(data.player_b_word === firstWord) winnerNames.push(nameB); else allSame = false;
-            if(data.player_c_word === firstWord) winnerNames.push(nameC); else if(data.player_c_word) allSame = false;
-            if(data.player_d_word === firstWord) winnerNames.push(nameD); else if(data.player_d_word) allSame = false;
-            if(data.player_e_word === firstWord) winnerNames.push(nameE); else if(data.player_e_word) allSame = false;
-            
-            winnerNames = [...new Set(winnerNames)].filter(n => n);
-            const titleEl = document.querySelector('.poster-title');
+async function advanceRound(){
+  if (!isTransitioning) return;
+  isTransitioning = false;
+  document.getElementById('round-result-overlay').classList.add('hidden');
+  try { await supabaseClient.rpc('next_round', { p_code: currentRoomCode }); }
+  catch (e){ console.error('next_round', e); }
+  checkRoomState();
+}
 
-            if (allSame && winnerNames.length > 2) {
-                titleEl.innerHTML = `天呐！全员天选之子，<br>这默契度太高了吧！`;
-            } else {
-                titleEl.innerHTML = `<span id="poster-winners">${winnerNames.join(" 和 ")}</span> 想到了一起！`;
-            }
+/* ================= 渲染：本轮结算 ================= */
+function renderRoundResult(round, data, roundNo){
+  const words = extractWords(round, data);
+  const judge = judgeRound(words);
+  const titleEl = document.getElementById('round-result-title');
+  const subEl = document.getElementById('round-result-sub');
+  const box = document.getElementById('round-result-words');
+  const total = words.length;
 
-            const listEl = document.getElementById('poster-history-list');
-            listEl.innerHTML = '';
-            const sortedHistory = [...data.history].sort((a, b) => a.round_number - b.round_number);
-            
-            sortedHistory.forEach(item => {
-                const div = document.createElement('div');
-                div.className = `history-item`;
-                
-                let html = '';
-                if(item.player_a_word) html += `<div class="word-bubble word-a">${item.player_a_word}</div>`;
-                if(item.player_b_word) html += `<div class="word-bubble word-b">${item.player_b_word}</div>`;
-                if(item.player_c_word) html += `<div class="word-bubble word-c">${item.player_c_word}</div>`;
-                if(item.player_d_word) html += `<div class="word-bubble word-d">${item.player_d_word}</div>`;
-                if(item.player_e_word) html += `<div class="word-bubble word-e">${item.player_e_word}</div>`;
+  let title, sub;
+  if (judge.kind === 'all'){ title = '全员想到了一起！'; titleEl.className = 'sheet-title t-pink'; }
+  else if (judge.kind === 'match'){ title = esc(judge.winners.join(' 和 ')) + ' 想到了一起！'; titleEl.className = 'sheet-title t-pink'; }
+  else if (judge.kind === 'close'){ title = pickTip('close'); titleEl.className = 'sheet-title'; }
+  else { title = pickTip('far'); titleEl.className = 'sheet-title'; }
+  sub = `第 ${roundNo} 轮 · ${total} 位玩家`;
+  titleEl.textContent = title;
+  subEl.textContent = sub;
 
-                div.innerHTML = html;
-                listEl.appendChild(div);
-            });
-        }
+  box.innerHTML = words.map(w => `
+    <div class="wgroup">
+      <span class="wplayer">${esc(w.name)}</span>
+      <div class="rword ${judge.hitRoles.includes(w.role) ? 'hit' : ''}">${esc(w.word)}</div>
+    </div>`).join('');
+}
 
-        async function restartGame() {
-            try {
-                const { data, error } = await supabaseClient.rpc('restart_game', { p_code: currentRoomCode });
-                if (error) throw error;
-                
-                showView('view-room');
-                document.getElementById('round-result-overlay').classList.add('hidden');
-                isTransitioning = false;
-                checkRoomState();
-                if(pollInterval) clearInterval(pollInterval);
-                pollInterval = setInterval(checkRoomState, 1200);
-                document.getElementById('confetti-canvas').style.display = 'none';
-            } catch (err) { alert("重开失败: " + err.message); }
-        }
+/* ================= 渲染：历史记录 ================= */
+function renderHistory(history, data){
+  const listEl = document.getElementById('history-list');
+  const namesEl = document.getElementById('history-names');
+  const slots = playerSlots(data);
+  namesEl.textContent = slots.map(s => s.name).join(' · ');
+  const sorted = [...history].sort((a, b) => b.round_number - a.round_number);
+  listEl.innerHTML = '';
+  sorted.forEach(item => {
+    const words = extractWords(item, data);
+    const judge = judgeRound(words);
+    const row = document.createElement('div');
+    row.className = 'round-row';
+    row.innerHTML = `
+      <div class="round-meta">
+        <span class="round-tag">第 ${item.round_number} 轮</span>
+        ${judge.kind === 'all' || judge.kind === 'match' ? '<span class="match-tag">默契</span>' : ''}
+      </div>
+      <div class="words-line">${words.map((w, i) => `
+        ${i ? '<span class="vs">×</span>' : ''}
+        <div class="wgroup"><span class="wplayer">${esc(w.name)}</span><div class="wbubble ${w.cls}">${esc(w.word)}</div></div>`).join('')}
+      </div>`;
+    listEl.appendChild(row);
+  });
+}
 
-        async function submitWord() {
-            const wordInput = document.getElementById('word-input');
-            const word = wordInput.value.trim();
-            if(!word) return alert("词语不能为空");
-            try {
-                const { data, error } = await supabaseClient.rpc('submit_game_word', { p_code: currentRoomCode, p_word: word });
-                if (error) throw error;
-                wordInput.value = '';
-                checkRoomState(); 
-            } catch (err) { alert("提交失败: " + err.message); }
-        }
+/* ================= 渲染：海报 ================= */
+function renderPoster(data){
+  const finalWord = data.player_a_word;
+  document.getElementById('poster-final-word').innerText = finalWord;
 
-        function startConfetti() {
-            const canvas = document.getElementById('confetti-canvas');
-            canvas.style.display = 'block';
-            const ctx = canvas.getContext('2d');
-            let width = window.innerWidth;
-            let height = window.innerHeight;
-            canvas.width = width;
-            canvas.height = height;
+  const words = [];
+  [['a','A'],['b','B'],['c','C'],['d','D'],['e','E']].forEach(([k, role]) => {
+    if (data['player_' + k + '_word'] != null) words.push({ role, name: cleanName(data['player_' + k + '_name']), word: String(data['player_' + k + '_word']) });
+  });
+  const winners = [...new Set(words.filter(w => w.word === finalWord).map(w => w.name))];
+  const titleEl = document.getElementById('poster-title');
+  if (winners.length > 2) titleEl.innerHTML = '天呐！全员天选之子，<br>这默契度太高了吧！';
+  else titleEl.innerHTML = `${winners.map(esc).join(' 和 ')} 想到了一起！`;
 
-            const colors = ['#F7A8B8', '#C5B4E3', '#FFF0F5', '#FFD1DC'];
-            let particles = [];
+  const listEl = document.getElementById('poster-history');
+  listEl.innerHTML = '';
+  const history = Array.isArray(data.history) ? data.history : [];
+  const sorted = [...history].sort((a, b) => a.round_number - b.round_number);
+  sorted.forEach(item => {
+    const wordsArr = extractWords(item, data);
+    const judge = judgeRound(wordsArr);
+    const row = document.createElement('div');
+    row.className = 'round-row';
+    row.innerHTML = `
+      <div class="round-meta">
+        <span class="round-tag">第 ${item.round_number} 轮</span>
+        ${judge.kind === 'all' || judge.kind === 'match' ? '<span class="match-tag">默契</span>' : ''}
+      </div>
+      <div class="words-line">${wordsArr.map((w, i) => `
+        ${i ? '<span class="vs">×</span>' : ''}
+        <div class="wgroup"><span class="wplayer">${esc(w.name)}</span><div class="wbubble ${w.cls}">${esc(w.word)}</div></div>`).join('')}
+      </div>`;
+    listEl.appendChild(row);
+  });
+}
 
-            for (let i = 0; i < 120; i++) {
-                particles.push({
-                    x: Math.random() * width,
-                    y: Math.random() * height - height,
-                    w: Math.random() * 8 + 4,
-                    h: Math.random() * 8 + 4,
-                    color: colors[Math.floor(Math.random() * colors.length)],
-                    speedY: Math.random() * 3 + 2,
-                    speedX: (Math.random() - 0.5) * 2,
-                    rotation: Math.random() * 360,
-                    rotationSpeed: (Math.random() - 0.5) * 10
-                });
-            }
+async function restartGame(){
+  try {
+    const { error } = await supabaseClient.rpc('restart_game', { p_code: currentRoomCode });
+    if (error) throw error;
+    document.getElementById('round-result-overlay').classList.add('hidden');
+    document.getElementById('confetti-canvas').style.display = 'none';
+    celebrating = false;
+    isTransitioning = false;
+    enterRoomView(currentRoomCode);
+    toast('再来一轮！');
+  } catch (err){ toast('重开失败：' + err.message); }
+}
 
-            function update() {
-                ctx.clearRect(0, 0, width, height);
-                let active = false;
-                particles.forEach(p => {
-                    p.y += p.speedY;
-                    p.x += p.speedX;
-                    p.rotation += p.rotationSpeed;
-                    if (p.y < height) active = true;
-                    ctx.save();
-                    ctx.translate(p.x, p.y);
-                    ctx.rotate(p.rotation * Math.PI / 180);
-                    ctx.fillStyle = p.color;
-                    ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
-                    ctx.restore();
-                });
-                if (active && canvas.style.display !== 'none') {
-                    requestAnimationFrame(update);
-                }
-            }
-            update();
-        }
-    </script>
+/* ================= 提交 ================= */
+async function submitWord(){
+  const input = document.getElementById('word-input');
+  const word = input.value.trim();
+  if (!word){ toast('先想一个词吧'); input.focus(); return; }
+  const btn = document.getElementById('btn-submit');
+  setLoading(btn, true);
+  try {
+    const { error } = await supabaseClient.rpc('submit_game_word', { p_code: currentRoomCode, p_word: word });
+    if (error) throw error;
+    input.value = '';
+    checkRoomState();
+  } catch (err){ toast('提交失败：' + err.message); }
+  finally { setLoading(btn, false); }
+}
+
+/* ================= 彩带 ================= */
+function startConfetti(){
+  const canvas = document.getElementById('confetti-canvas');
+  canvas.style.display = 'block';
+  const ctx = canvas.getContext('2d');
+  const W = (canvas.width = window.innerWidth);
+  const H = (canvas.height = window.innerHeight);
+  const colors = ['#E3A7B9', '#D592AB', '#B0A4CE', '#9C8FBE', '#E6C493', '#F7E4E9'];
+  const parts = [];
+  for (let i = 0; i < 140; i++){
+    parts.push({
+      x: Math.random() * W,
+      y: Math.random() * H - H,
+      w: Math.random() * 8 + 4,
+      h: Math.random() * 8 + 4,
+      c: colors[Math.floor(Math.random() * colors.length)],
+      vy: Math.random() * 2.4 + 1.6,
+      vx: (Math.random() - 0.5) * 1.6,
+      rot: Math.random() * 360,
+      vr: (Math.random() - 0.5) * 12,
+      life: 1
+    });
+  }
+  let frame = 0;
+  function tick(){
+    ctx.clearRect(0, 0, W, H);
+    let alive = false;
+    parts.forEach(p => {
+      p.y += p.vy; p.x += p.vx + Math.sin(frame / 18 + p.x) * 0.3; p.rot += p.vr;
+      if (p.y < H + 30) alive = true;
+      ctx.save();
+      ctx.translate(p.x, p.y); ctx.rotate(p.rot * Math.PI / 180);
+      ctx.globalAlpha = p.y > H * 0.85 ? 1 - (p.y - H * 0.85) / (H * 0.15) : 1;
+      ctx.fillStyle = p.c; ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
+    });
+    frame++;
+    if (alive && canvas.style.display !== 'none') requestAnimationFrame(tick);
+  }
+  tick();
+}
+
+/* ================= 交互绑定 ================= */
+document.getElementById('copy-room-btn').addEventListener('click', function(){
+  const code = document.getElementById('display-room-code').innerText;
+  const done = () => toast('房间号已复制：' + code);
+  if (navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(code).then(done).catch(() => fallbackCopy(code, done));
+  } else fallbackCopy(code, done);
+});
+function fallbackCopy(text, done){
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); done(); } catch (e){ toast('复制失败，请手动记下房间号'); }
+  ta.remove();
+}
+document.getElementById('word-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter'){ e.preventDefault(); submitWord(); }
+});
+document.getElementById('join-code').addEventListener('keydown', e => {
+  if (e.key === 'Enter'){ e.preventDefault(); joinGame(); }
+});
+document.getElementById('nickname').addEventListener('keydown', e => {
+  if (e.key === 'Enter'){ e.preventDefault(); showModeSelection(); }
+});
+document.getElementById('join-code').addEventListener('input', e => {
+  e.target.value = e.target.value.replace(/\D/g, '').slice(0, 4);
+});
+</script>
 </body>
 </html>
