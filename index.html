@@ -364,7 +364,7 @@ input.code-input{font-size:24px; letter-spacing:10px; font-weight:700; color:var
 
 <!-- ===== 弹层：本轮结算 ===== -->
 <div class="overlay hidden" id="round-result-overlay">
-  <div class="sheet" role="dialog" aria-label="本轮结果">
+  <div class="sheet" role="dialog" aria-label="本轮结果" id="round-result-box">
     <h3 class="sheet-title" id="round-result-title"></h3>
     <p class="sheet-sub" id="round-result-sub"></p>
     <div class="result-words" id="round-result-words"></div>
@@ -650,7 +650,8 @@ async function checkRoomState(){
         overlayShownAt = Date.now();
         pendingAdvKey = currentRound;
         overlay.classList.remove('hidden');
-        renderRoundResult(history[0], data, currentRound);
+        try { renderRoundResult(history[0], data, currentRound); }
+        catch (e){ console.error('结算渲染失败', e); }
         const advKey = currentRound;
         setTimeout(() => {
           if (!isTransitioning) return;
