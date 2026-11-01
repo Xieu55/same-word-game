@@ -57,10 +57,12 @@
         @keyframes breathe { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
 
         .history-container { margin-top: 10px; overflow-y: auto; padding-bottom: 10px; }
-        .history-item { display: flex; align-items: flex-start; justify-content: center; margin-bottom: 20px; flex-wrap: wrap; gap: 6px;}
+        .history-header { text-align: center; font-size: 12px; color: #C0C0C0; margin-bottom: 16px; letter-spacing: 1px; }
+        .history-item { display: flex; align-items: center; justify-content: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;}
 
-        .word-group { display: flex; flex-direction: column; align-items: center; max-width: 45%; }
         .player-name { font-size: 11px; color: #999; margin-bottom: 4px; width: 100%; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+        .word-group { display: flex; flex-direction: column; align-items: center; max-width: 45%; }
+
         .word-bubble { 
             padding: 10px 16px; border-radius: 18px; text-align: center; font-size: 14px; width: 100%; box-sizing: border-box;
             color: var(--text-main); word-break: break-all; box-shadow: 0 4px 12px rgba(0,0,0,0.03); 
@@ -70,7 +72,7 @@
         .word-c { background-color: #FFFFFF; border: 1px solid #E4F0FF; color: #7A94D8; }
         .word-d { background-color: #FFFFFF; border: 1px solid #E9FFE4; color: #7AD886; }
         .word-e { background-color: #FFFFFF; border: 1px solid #FFF3E4; color: #D8B07A; }
-        .vs-mark { font-size: 14px; color: #D0D0D0; align-self: center; margin-top: 15px;}
+        .vs-mark { font-size: 14px; color: #D0D0D0; margin: 0 4px;}
 
         .mode-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -164,6 +166,7 @@
             </div>
 
             <div id="history-area" class="hidden">
+                <div class="history-header" id="history-header-names">对局记录</div>
                 <div class="history-container" id="history-list" style="max-height: 280px;"></div>
             </div>
             
@@ -239,6 +242,7 @@
 
         function showJoinView() {
             if(!checkNickname()) return;
+            document.getElementById('join-error').classList.add('hidden');
             showView('view-join');
         }
 
@@ -304,21 +308,17 @@
             try {
                 await ensureAuth();
                 const { data, error } = await supabaseClient.rpc('join_game', { p_code: code, p_name: myName });
-                if (error) throw error;
                 
-                if (data.error) {
-                    // 如果满员或者出错，直接弹窗提示，不再当观众
-                    errorEl.innerText = "加入失败：" + (data.error || "房间已满");
-                    errorEl.classList.remove('hidden');
-                    return;
-                }
+                // 🚀 修复：如果报错，必须看到具体的错误原因，不能直接吞掉
+                if (error) throw new Error(error.message);
+                if (data.error) throw new Error(data.error);
                 
                 myRole = data.role; 
                 currentRoomCode = code;
                 enterRoomView(currentRoomCode);
                 
             } catch (err) {
-                errorEl.innerText = "加入失败，请重试";
+                errorEl.innerText = err.message;
                 errorEl.classList.remove('hidden');
             }
         }
@@ -391,7 +391,6 @@
                         historyArea.classList.add('hidden');
                     }
 
-                    // 纯粹的玩家统计，没有观众逻辑
                     let totalPlayers = 0;
                     let totalSubmitted = 0;
                     if(data.player_a_name) { totalPlayers++; if(data.has_a_submitted) totalSubmitted++; }
@@ -458,6 +457,24 @@
         function renderHistory(history, data) {
             const listEl = document.getElementById('history-list');
             listEl.innerHTML = '';
+            
+            let allNames = [];
+            if(data.player_a_name) allNames.push(data.player_a_name);
+            if(data.player_b_name) allNames.push(data.player_b_name);
+            if(data.player_c_name) allNames.push(data.player_c_name);
+            if(data.player_d_name) allNames.push(data.player_d_name);
+            if(data.player_e_name) allNames.push(data.player_e_name);
+            
+            const isMultiplayer = allNames.length > 2;
+            
+            if (!isMultiplayer) {
+                document.getElementById('history-header-names').classList.add('hidden');
+            } else {
+                const headerEl = document.getElementById('history-header-names');
+                headerEl.classList.remove('hidden');
+                headerEl.innerText = `👥 ${allNames.join(" · ")}`;
+            }
+
             const sortedHistory = [...history].sort((a, b) => b.round_number - a.round_number);
             sortedHistory.forEach(item => {
                 const div = document.createElement('div');
@@ -466,7 +483,11 @@
                 
                 let html = '';
                 wordsArray.forEach((w, index) => {
-                    html += `<div class="word-group"><div class="player-name">${w.name}</div><div class="word-bubble ${w.color}">${w.word}</div></div>`;
+                    if (isMultiplayer) {
+                        html += `<div class="word-group"><div class="player-name">${w.name}</div><div class="word-bubble ${w.color}">${w.word}</div></div>`;
+                    } else {
+                        html += `<div class="word-bubble ${w.color}">${w.word}</div>`;
+                    }
                     if (index < wordsArray.length - 1) html += `<div class="vs-mark">×</div>`;
                 });
                 
@@ -553,44 +574,4 @@
             canvas.width = width;
             canvas.height = height;
 
-            const colors = ['#F7A8B8', '#C5B4E3', '#FFF0F5', '#FFD1DC'];
-            let particles = [];
-
-            for (let i = 0; i < 120; i++) {
-                particles.push({
-                    x: Math.random() * width,
-                    y: Math.random() * height - height,
-                    w: Math.random() * 8 + 4,
-                    h: Math.random() * 8 + 4,
-                    color: colors[Math.floor(Math.random() * colors.length)],
-                    speedY: Math.random() * 3 + 2,
-                    speedX: (Math.random() - 0.5) * 2,
-                    rotation: Math.random() * 360,
-                    rotationSpeed: (Math.random() - 0.5) * 10
-                });
-            }
-
-            function update() {
-                ctx.clearRect(0, 0, width, height);
-                let active = false;
-                particles.forEach(p => {
-                    p.y += p.speedY;
-                    p.x += p.speedX;
-                    p.rotation += p.rotationSpeed;
-                    if (p.y < height) active = true;
-                    ctx.save();
-                    ctx.translate(p.x, p.y);
-                    ctx.rotate(p.rotation * Math.PI / 180);
-                    ctx.fillStyle = p.color;
-                    ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
-                    ctx.restore();
-                });
-                if (active && canvas.style.display !== 'none') {
-                    requestAnimationFrame(update);
-                }
-            }
-            update();
-        }
-    </script>
-</body>
-</html>
+            const colors = ['#F7A8B
