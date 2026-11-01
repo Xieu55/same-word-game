@@ -153,6 +153,7 @@ input.code-input{font-size:24px; letter-spacing:10px; font-weight:700; color:var
 .history-head .lbl{font-size:12px; color:var(--faint); letter-spacing:2px}
 .history-head .names{font-size:11.5px; color:var(--muted); max-width:60%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .history-list{display:flex; flex-direction:column; gap:10px; max-height:270px; overflow-y:auto; padding-bottom:6px; scrollbar-width:thin}
+.history-list.poster-history{max-height:none; overflow:visible; gap:8px; padding-bottom:0}
 .round-row{
   background:var(--card); border:1px solid var(--line); border-radius:var(--r-md);
   box-shadow:0 8px 22px rgba(206,150,166,.09); padding:12px 14px;
@@ -221,18 +222,29 @@ input.code-input{font-size:24px; letter-spacing:10px; font-weight:700; color:var
   background:linear-gradient(135deg,var(--pink) 0%, var(--lav) 100%);
   color:#fff; box-shadow:0 8px 22px rgba(206,150,166,.4); animation:heartbeat 1s ease-in-out 1;
 }
+/* 相似度梯度档位 */
+.sheet-title.t-gold{color:#B9823A}
+.sheet-title.t-soft{color:var(--muted)}
+#round-result-box.tier-3{background:linear-gradient(180deg,#fff 0%,#FCE4F0 100%); border:1.5px solid #F2BCD6}
+#round-result-box.tier-2{background:linear-gradient(180deg,#FFFDF6 0%,#FFE9B8 100%); border:1.5px solid #EFCB86}
+#round-result-box.tier-1{background:linear-gradient(180deg,#fff 0%,#FFEFE0 100%); border:1.5px solid #EFC9A8}
+#round-result-box.tier-0{background:#fff; border:1.5px solid #E8E2F2}
+.rword.t3{background:linear-gradient(135deg,var(--pink),var(--lav)); color:#fff; box-shadow:0 8px 22px rgba(206,150,166,.4); animation:heartbeat 1s ease-in-out 1}
+.rword.t2{background:linear-gradient(135deg,#EBCB8A,#DFA45F); color:#fff; box-shadow:0 8px 22px rgba(223,164,95,.45)}
+.rword.t1{background:#FFF3E0; color:#B98545; border-color:#EFC9A8; box-shadow:none}
+.rword.t0{background:#fff}
 @keyframes heartbeat{0%,100%{transform:scale(1)} 25%{transform:scale(1.06)} 50%{transform:scale(.97)} 75%{transform:scale(1.04)}}
 
 /* ===== 海报页 ===== */
-.trophy{width:64px; height:64px; margin:0 auto 14px; border-radius:50%;
+.trophy{width:56px; height:56px; margin:0 auto 10px; border-radius:50%;
   background:linear-gradient(135deg,#F2E2C8, #DFB98A); display:flex; align-items:center; justify-content:center;
   box-shadow:0 12px 26px rgba(223,185,138,.4); animation:heartbeat 1.1s ease-in-out 1}
-.trophy svg{width:32px; height:32px}
-.poster-title{margin:0 0 20px; font-size:21px; font-weight:800; line-height:1.5; text-align:center;
+.trophy svg{width:28px; height:28px}
+.poster-title{margin:0 0 14px; font-size:20px; font-weight:800; line-height:1.5; text-align:center;
   color:var(--pink-deep)}
 .final-word-box{
   background:var(--card); border:1px solid var(--line); border-radius:var(--r-lg);
-  box-shadow:var(--shadow); padding:22px 16px; margin-bottom:24px; text-align:center;
+  box-shadow:var(--shadow); padding:16px; margin-bottom:16px; text-align:center;
 }
 .final-word-box .lbl{display:block; font-size:12px; color:var(--muted); letter-spacing:2px; margin-bottom:10px}
 .final-word-box b{display:block; font-size:36px; font-weight:800; letter-spacing:3px;
@@ -263,9 +275,6 @@ input.code-input{font-size:24px; letter-spacing:10px; font-weight:700; color:var
 <main class="stage" id="app">
   <!-- ===== 视图：首页 ===== -->
   <section class="view" id="view-home">
-    <div class="logo-mark" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="#fff"/><circle cx="17.4" cy="5.8" r="2.1" fill="#fff" opacity=".85"/><circle cx="20.2" cy="9.4" r="1.3" fill="#fff" opacity=".6"/></svg>
-    </div>
     <h1>同词相遇</h1>
     <p class="sub">看看你们的脑回路是否一致</p>
     <div class="hint-chips">
@@ -359,7 +368,7 @@ input.code-input{font-size:24px; letter-spacing:10px; font-weight:700; color:var
     <h3 class="sheet-title" id="round-result-title"></h3>
     <p class="sheet-sub" id="round-result-sub"></p>
     <div class="result-words" id="round-result-words"></div>
-    <button class="btn btn-ghost btn-sm" onclick="advanceRound()" style="margin-top:14px">下一轮</button>
+    <p style="margin:18px 0 0; font-size:12px; color:var(--faint)">即将自动进入下一轮…</p>
   </div>
 </div>
 
@@ -380,6 +389,9 @@ let myName = '';
 let myRole = 'A';
 let isTransitioning = false;
 let celebrating = false;
+let lastStripSig = '';
+let lastHistSig = '';
+let lastAdvancedKey = -1;
 
 /* ================= 工具 ================= */
 // HTML 转义：昵称/词语都是用户输入，禁止直接拼进 innerHTML（防 XSS）
@@ -498,6 +510,9 @@ function enterRoomView(code){
   document.getElementById('display-room-code').innerText = code;
   document.getElementById('join-error').classList.add('hidden');
   isTransitioning = false;
+  lastStripSig = '';
+  lastHistSig = '';
+  lastAdvancedKey = -1;
   showView('view-room');
   checkRoomState();
   if (pollTimer) clearInterval(pollTimer);
@@ -522,13 +537,18 @@ function renderPlayers(data){
   const strip = document.getElementById('players-strip');
   const cap = document.getElementById('players-caption');
   const slots = playerSlots(data);
-  if (!slots.length){ strip.innerHTML = ''; cap.textContent = ''; return; }
-  strip.innerHTML = slots.map(s => `
-    <div class="avatar av-${s.role.toLowerCase()} ${s.submitted ? 'is-sub' : ''}">
-      ${esc(s.name.slice(0, 1))}
-      <span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="#84B69C" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"/></svg></span>
-    </div>`).join('');
+  if (!slots.length){ strip.innerHTML = ''; cap.textContent = ''; lastStripSig = ''; return; }
   const subCount = slots.filter(s => s.submitted).length;
+  // 只有头像组成/提交状态真的变化时才重绘，否则轮询时会反复触发入场动画造成闪烁
+  const sig = slots.map(s => s.role + ':' + s.name + (s.submitted ? '1' : '0')).join('|');
+  if (sig !== lastStripSig){
+    lastStripSig = sig;
+    strip.innerHTML = slots.map(s => `
+      <div class="avatar av-${s.role.toLowerCase()} ${s.submitted ? 'is-sub' : ''}">
+        ${esc(s.name.slice(0, 1))}
+        <span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="#84B69C" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"/></svg></span>
+      </div>`).join('');
+  }
   if (data.status === 'waiting') cap.textContent = `${slots.length} 人已加入`;
   else cap.textContent = subCount === slots.length ? '全部提交，正在判定…' : `${subCount}/${slots.length} 已提交`;
 }
@@ -603,6 +623,7 @@ async function checkRoomState(){
     }
 
     statusEl.classList.remove('status-wait');
+    // 轮次按实际对局顺序显示，不读服务端内部计数器（避免服务端跳号导致显示错乱）
     const currentRound = history.length + 1;
     document.getElementById('round-badge').innerText = '第 ' + currentRound + ' 轮';
 
@@ -618,7 +639,17 @@ async function checkRoomState(){
         isTransitioning = true;
         overlay.classList.remove('hidden');
         renderRoundResult(history[0], data, currentRound);
-        setTimeout(() => { if (isTransitioning) advanceRound(); }, 3000);
+        const advKey = currentRound;
+        setTimeout(() => {
+          if (!isTransitioning) return;
+          if (myRole === 'A'){
+            if (advKey !== lastAdvancedKey){ lastAdvancedKey = advKey; advanceRound(); }
+          } else {
+            isTransitioning = false;
+            document.getElementById('round-result-overlay').classList.add('hidden');
+            checkRoomState();
+          }
+        }, 3000);
       }
     } else {
       overlay.classList.add('hidden');
@@ -652,22 +683,37 @@ function renderRoundResult(round, data, roundNo){
   const judge = judgeRound(words);
   const titleEl = document.getElementById('round-result-title');
   const subEl = document.getElementById('round-result-sub');
+  const boxEl = document.getElementById('round-result-box');
   const box = document.getElementById('round-result-words');
   const total = words.length;
 
-  let title, sub;
-  if (judge.kind === 'all'){ title = '全员想到了一起！'; titleEl.className = 'sheet-title t-pink'; }
-  else if (judge.kind === 'match'){ title = esc(judge.winners.join(' 和 ')) + ' 想到了一起！'; titleEl.className = 'sheet-title t-pink'; }
-  else if (judge.kind === 'close'){ title = pickTip('close'); titleEl.className = 'sheet-title'; }
-  else { title = pickTip('far'); titleEl.className = 'sheet-title'; }
-  sub = `第 ${roundNo} 轮 · ${total} 位玩家`;
+  // 任意两词的最大相似度，决定颜色梯度档位
+  let maxSim = 0;
+  for (let i = 0; i < words.length; i++)
+    for (let j = i + 1; j < words.length; j++)
+      maxSim = Math.max(maxSim, wordSimilarity(words[i].word, words[j].word));
+
+  let tier, title, cardCls, titleCls;
+  if (judge.kind === 'all'){
+    tier = 'tier-3'; title = '全员想到了一起！'; cardCls = 't3'; titleCls = 't-pink';
+  } else if (judge.kind === 'match'){
+    tier = 'tier-3'; title = esc(judge.winners.join(' 和 ')) + ' 想到了一起！'; cardCls = 't3'; titleCls = 't-pink';
+  } else if (maxSim >= 0.5){
+    tier = 'tier-2'; title = '这么接近？脑电波快对上了！'; cardCls = 't2'; titleCls = 't-gold';
+  } else if (maxSim >= 0.3){
+    tier = 'tier-1'; title = pickTip('close'); cardCls = 't1'; titleCls = 't-soft';
+  } else {
+    tier = 'tier-0'; title = pickTip('far'); cardCls = 't0'; titleCls = 't-soft';
+  }
+  boxEl.className = 'sheet ' + tier;
+  titleEl.className = 'sheet-title ' + titleCls;
   titleEl.textContent = title;
-  subEl.textContent = sub;
+  subEl.textContent = `第 ${roundNo} 轮 · ${total} 位玩家 · 相似度 ${Math.round(maxSim * 100)}%`;
 
   box.innerHTML = words.map(w => `
     <div class="wgroup">
       <span class="wplayer">${esc(w.name)}</span>
-      <div class="rword ${judge.hitRoles.includes(w.role) ? 'hit' : ''}">${esc(w.word)}</div>
+      <div class="rword ${cardCls}">${esc(w.word)}</div>
     </div>`).join('');
 }
 
@@ -677,6 +723,11 @@ function renderHistory(history, data){
   const namesEl = document.getElementById('history-names');
   const slots = playerSlots(data);
   namesEl.textContent = slots.map(s => s.name).join(' · ');
+  const sig = history.map(h => [h.round_number, h.player_a_word, h.player_b_word, h.player_c_word, h.player_d_word, h.player_e_word].join('|')).join('||');
+  if (sig === lastHistSig) return;
+  lastHistSig = sig;
+  const asc = [...history].sort((a, b) => (a.round_number || 0) - (b.round_number || 0));
+  const ordByRow = new Map(asc.map((h, i) => [h, i + 1]));
   const sorted = [...history].sort((a, b) => b.round_number - a.round_number);
   listEl.innerHTML = '';
   sorted.forEach(item => {
@@ -686,7 +737,7 @@ function renderHistory(history, data){
     row.className = 'round-row';
     row.innerHTML = `
       <div class="round-meta">
-        <span class="round-tag">第 ${item.round_number} 轮</span>
+        <span class="round-tag">第 ${ordByRow.get(item)} 轮</span>
         ${judge.kind === 'all' || judge.kind === 'match' ? '<span class="match-tag">默契</span>' : ''}
       </div>
       <div class="words-line">${words.map((w, i) => `
@@ -715,14 +766,14 @@ function renderPoster(data){
   listEl.innerHTML = '';
   const history = Array.isArray(data.history) ? data.history : [];
   const sorted = [...history].sort((a, b) => a.round_number - b.round_number);
-  sorted.forEach(item => {
+  sorted.forEach((item, idx) => {
     const wordsArr = extractWords(item, data);
     const judge = judgeRound(wordsArr);
     const row = document.createElement('div');
     row.className = 'round-row';
     row.innerHTML = `
       <div class="round-meta">
-        <span class="round-tag">第 ${item.round_number} 轮</span>
+        <span class="round-tag">第 ${idx + 1} 轮</span>
         ${judge.kind === 'all' || judge.kind === 'match' ? '<span class="match-tag">默契</span>' : ''}
       </div>
       <div class="words-line">${wordsArr.map((w, i) => `
