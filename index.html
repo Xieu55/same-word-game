@@ -9,19 +9,19 @@
 <style>
 /* ===== 设计令牌 ===== */
 :root{
-  --ink:#4A4453;
-  --muted:#A29AAE;
-  --faint:#C9C2D4;
-  --pink:#DDA3B3;
-  --pink-deep:#C98C9F;
-  --pink-soft:#F7E4E9;
-  --lav:#A79BC6;
-  --lav-soft:#EFEBF6;
-  --gold:#DFB98A;
-  --gold-soft:#F8EFE2;
+  --ink:#6E6675;
+  --muted:#ADA6BA;
+  --faint:#D4CEDE;
+  --pink:#F0A9BE;
+  --pink-deep:#E394AC;
+  --pink-soft:#FDEEF3;
+  --lav:#B3A8D9;
+  --lav-soft:#F3F0FB;
+  --gold:#ECC8A0;
+  --gold-soft:#FBF3E6;
   --card:rgba(255,255,255,.72);
   --line:rgba(255,255,255,.92);
-  --shadow:0 16px 40px rgba(206,150,166,.13);
+  --shadow:0 16px 40px rgba(240,169,190,.14);
   --r-lg:24px; --r-md:16px; --r-sm:12px;
 }
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
@@ -29,9 +29,9 @@ html,body{margin:0; padding:0}
 body{
   min-height:100vh;
   background:
-    radial-gradient(1200px 700px at 85% -10%, #F5E7EC 0%, rgba(245,231,236,0) 60%),
-    radial-gradient(1000px 640px at -10% 110%, #EEE9F5 0%, rgba(238,233,245,0) 60%),
-    #FBF8FA;
+    radial-gradient(1200px 700px at 85% -10%, #FCE4EC 0%, rgba(252,228,236,0) 60%),
+    radial-gradient(1000px 640px at -10% 110%, #F0EBFA 0%, rgba(240,235,250,0) 60%),
+    #FDFAFB;
   color:var(--ink);
   font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","HarmonyOS Sans SC","Microsoft YaHei","Segoe UI",sans-serif;
   display:flex; justify-content:center; align-items:flex-start;
@@ -39,8 +39,8 @@ body{
 }
 /* 背景光晕（装饰层） */
 .bg-orb{position:fixed; border-radius:50%; filter:blur(56px); opacity:.55; pointer-events:none; z-index:0}
-.orb-1{width:280px; height:280px; background:#F1DCE3; top:-80px; right:-60px}
-.orb-2{width:240px; height:240px; background:#E5DFF0; bottom:-70px; left:-50px}
+.orb-1{width:280px; height:280px; background:#FAD9E4; top:-80px; right:-60px}
+.orb-2{width:240px; height:240px; background:#EBE5F7; bottom:-70px; left:-50px}
 
 .stage{position:relative; z-index:1; width:100%; max-width:400px}
 .view{display:flex; flex-direction:column; animation:rise .42s cubic-bezier(.22,.9,.32,1) both}
@@ -233,6 +233,14 @@ input.code-input{font-size:24px; letter-spacing:10px; font-weight:700; color:var
 .rword.t2{background:linear-gradient(135deg,#EBCB8A,#DFA45F); color:#fff; box-shadow:0 8px 22px rgba(223,164,95,.45)}
 .rword.t1{background:#FFF3E0; color:#B98545; border-color:#EFC9A8; box-shadow:none}
 .rword.t0{background:#fff}
+/* 结算层紧凑化 */
+#round-result-box{max-width:300px; padding:18px 18px 14px; box-shadow:0 16px 40px rgba(206,150,166,.28)}
+#round-result-box .sheet-title{font-size:16px; margin-bottom:4px}
+#round-result-box .sheet-sub{margin-bottom:12px; font-size:11.5px}
+#round-result-box .result-words{margin-bottom:2px}
+#round-result-box .wgroup{max-width:44%}
+#round-result-box .rword{padding:8px 12px; font-size:15px}
+#round-result-box p:last-child{margin:12px 0 0; font-size:11px}
 @keyframes heartbeat{0%,100%{transform:scale(1)} 25%{transform:scale(1.06)} 50%{transform:scale(.97)} 75%{transform:scale(1.04)}}
 
 /* ===== 海报页 ===== */
@@ -395,6 +403,7 @@ let lastAdvancedKey = -1;
 let settleUntil = 0; // 推进后多久内不再接受服务端旧状态触发结算层
 let overlayShownAt = 0; // 结算层展示起始时间（轮询驱动推进，防定时器节流）
 let pendingAdvKey = -1;
+let lastShownHistLen = 0; // 已弹过结算的历史条数，防止同一轮重复弹出
 
 /* ================= 工具 ================= */
 // HTML 转义：昵称/词语都是用户输入，禁止直接拼进 innerHTML（防 XSS）
@@ -516,6 +525,7 @@ function enterRoomView(code){
   lastStripSig = '';
   lastHistSig = '';
   lastAdvancedKey = -1;
+  lastShownHistLen = 0;
   showView('view-room');
   checkRoomState();
   if (pollTimer) clearInterval(pollTimer);
@@ -645,12 +655,14 @@ async function checkRoomState(){
     if (submittedAll){
       playArea.classList.add('hidden');
       statusEl.innerText = '本轮结算';
-      if (overlay.classList.contains('hidden') && history.length && Date.now() > settleUntil){
+      const latestWords = extractWords(history[0], data);
+      if (overlay.classList.contains('hidden') && history.length && Date.now() > settleUntil && history.length !== lastShownHistLen && latestWords.length >= 2){
         isTransitioning = true;
         overlayShownAt = Date.now();
         pendingAdvKey = currentRound;
+        lastShownHistLen = history.length;
         overlay.classList.remove('hidden');
-        try { renderRoundResult(history[0], data, currentRound); }
+        try { renderRoundResult(history[0], data, history.length); }
         catch (e){ console.error('结算渲染失败', e); }
         const advKey = currentRound;
         setTimeout(() => {
@@ -659,8 +671,9 @@ async function checkRoomState(){
             lastAdvancedKey = advKey;
             advanceRound();
           } else {
-            // 房主已推进过（旧状态延迟重复弹出）：直接收起，避免卡死
+            // 收起结算层并加静默窗口：服务端旧状态延迟回来不会再重复弹出
             isTransitioning = false;
+            settleUntil = Date.now() + 5000;
             document.getElementById('round-result-overlay').classList.add('hidden');
             checkRoomState();
           }
